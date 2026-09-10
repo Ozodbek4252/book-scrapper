@@ -21,28 +21,33 @@ class SourceRegistryTest extends TestCase
         $this->assertFalse($this->registry()->has('kitob_uz'));
     }
 
-    public function test_asaxiy_is_the_only_source_with_a_driver_so_far(): void
+    public function test_only_the_sources_that_were_worth_one_have_a_driver(): void
     {
         $registry = $this->registry();
+        $written = ['asaxiy_uz', 'olcha_uz'];
 
-        $this->assertTrue($registry->hasDriver('asaxiy_uz'));
+        foreach ($written as $key) {
+            $this->assertTrue($registry->hasDriver($key), "[{$key}] should have a driver.");
+        }
 
-        foreach (array_diff($registry->keys(), ['asaxiy_uz']) as $key) {
+        // The publisher sites publish no ISBNs, or no catalogue at all.
+        foreach (array_diff($registry->keys(), $written) as $key) {
             $this->assertFalse($registry->hasDriver($key), "[{$key}] has a driver already.");
         }
     }
 
-    public function test_only_the_source_with_a_driver_is_switched_on(): void
+    public function test_a_source_without_a_driver_is_never_switched_on(): void
     {
         $registry = $this->registry();
 
         foreach ($registry->keys() as $key) {
-            $this->assertSame(
-                $registry->hasDriver($key),
-                $registry->isEnabled($key),
-                "[{$key}] should only be enabled once it has a driver.",
-            );
+            if (! $registry->hasDriver($key)) {
+                $this->assertFalse($registry->isEnabled($key), "[{$key}] is enabled but cannot run.");
+            }
         }
+
+        // Enabling a source is a deliberate act, so a new driver stays off.
+        $this->assertFalse($registry->isEnabled('olcha_uz'));
     }
 
     public function test_the_asaxiy_driver_resolves_to_the_real_class(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\TrustLevel;
 use App\Scraping\Drivers\AsaxiyUzDriver;
+use App\Scraping\Drivers\OlchaUzDriver;
 
 return [
 
@@ -126,6 +127,17 @@ return [
             'driver' => AsaxiyUzDriver::class,
             'enabled' => env('SCRAPING_ASAXIY_ENABLED', false),
             'base_url' => 'https://asaxiy.uz',
+            'rate_limit' => 1,
+            'trust_level' => TrustLevel::Bookstore,
+        ],
+
+        // No ISBNs at all, so it can never answer a barcode scan. It is here
+        // to enrich books already known from a source that has them, and to
+        // cover titles that source misses.
+        'olcha_uz' => [
+            'driver' => OlchaUzDriver::class,
+            'enabled' => env('SCRAPING_OLCHA_ENABLED', false),
+            'base_url' => 'https://olcha.uz',
             'rate_limit' => 1,
             'trust_level' => TrustLevel::Bookstore,
         ],

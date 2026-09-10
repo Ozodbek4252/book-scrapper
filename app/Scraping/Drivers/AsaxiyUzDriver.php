@@ -6,8 +6,8 @@ namespace App\Scraping\Drivers;
 
 use App\Scraping\Contracts\SourceDriver;
 use App\Scraping\DTO\RawBook;
+use App\Scraping\Html;
 use App\Scraping\Http\Fetcher;
-use DOMDocument;
 use DOMXPath;
 use Generator;
 use Throwable;
@@ -192,7 +192,7 @@ final readonly class AsaxiyUzDriver implements SourceDriver
      */
     public function parse(string $url, string $html): ?RawBook
     {
-        $xpath = self::xpathFor($html);
+        $xpath = Html::xpath($html);
         $characteristics = $this->characteristics($xpath);
 
         // No ISBN and no author means this is not a book, just another product.
@@ -260,8 +260,8 @@ final readonly class AsaxiyUzDriver implements SourceDriver
                 continue;
             }
 
-            $label = self::text($cells->item(0)?->textContent ?? '');
-            $value = self::text($cells->item(1)?->textContent ?? '');
+            $label = Html::text($cells->item(0)?->textContent ?? '');
+            $value = Html::text($cells->item(1)?->textContent ?? '');
 
             if ($label !== '' && $value !== '') {
                 $rows[$label] = $value;
@@ -303,25 +303,8 @@ final readonly class AsaxiyUzDriver implements SourceDriver
             return null;
         }
 
-        $title = self::text($node->textContent);
+        $title = Html::text($node->textContent);
 
         return $title === '' ? null : $title;
-    }
-
-    private static function xpathFor(string $html): DOMXPath
-    {
-        $document = new DOMDocument;
-
-        $previous = libxml_use_internal_errors(true);
-        $document->loadHTML('<?xml encoding="UTF-8">'.$html, LIBXML_NOWARNING | LIBXML_NOERROR);
-        libxml_clear_errors();
-        libxml_use_internal_errors($previous);
-
-        return new DOMXPath($document);
-    }
-
-    private static function text(string $value): string
-    {
-        return trim((string) preg_replace('/\s+/u', ' ', html_entity_decode($value)));
     }
 }

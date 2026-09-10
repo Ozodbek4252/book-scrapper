@@ -211,4 +211,70 @@ class UpsertBookFromSourceTest extends TestCase
 
         $this->assertSame($long, BookSource::sole()->raw_payload['language']);
     }
+
+    public function test_a_source_with_no_isbn_enriches_a_book_that_has_one(): void
+    {
+        // asaxiy knows the ISBN. olcha does not, but knows the page count.
+        $this->upsert($this->raw(['pages' => null]));
+
+        $book = $this->upsert(new RawBook(
+            sourceKey: 'olcha_uz',
+            url: 'https://olcha.uz/oz/product/view/otkan-kunlar',
+            externalId: 'O1',
+            title: "Abdulla Qodiriy: O'tkan kunlar",
+            authors: ['Abdulla Qodiriy'],
+            publishedYear: '2021',
+            pages: '336',
+        ));
+
+        $this->assertSame(1, Book::count(), 'the ISBN-less record must attach, not duplicate');
+        $this->assertSame('9789943650190', $book->isbn13, 'the ISBN must survive');
+        $this->assertSame(336, $book->pages, 'and the new source fills the gap');
+        $this->assertSame(2, BookSource::count());
+    }
+
+    public function test_a_book_first_seen_without_an_isbn_adopts_one_later(): void
+    {
+        // olcha first: no ISBN, so the book is stored on its fingerprint.
+        $this->upsert(new RawBook(
+            sourceKey: 'olcha_uz',
+            url: 'https://olcha.uz/oz/product/view/otkan-kunlar',
+            externalId: 'O1',
+            title: "Abdulla Qodiriy: O'tkan kunlar",
+            authors: ['Abdulla Qodiriy'],
+            publishedYear: '2021',
+        ));
+
+        $this->assertNull(Book::sole()->isbn13);
+
+        // asaxiy arrives later with the ISBN for the same book.
+        $book = $this->upsert($this->raw());
+
+        $this->assertSame(1, Book::count(), 'it should be adopted, not duplicated');
+        $this->assertSame('9789943650190', $book->isbn13);
+    }
+
+    public function test_a_different_year_is_a_different_book(): void
+    {
+        $this->upsert($this->raw(['isbn' => null]));
+
+        $this->upsert(new RawBook(
+            sourceKey: 'olcha_uz',
+            url: 'https://olcha.uz/oz/product/view/x',
+            externalId: 'O2',
+            title: "Abdulla Qodiriy: O'tkan kunlar",
+            authors: ['Abdulla Qodiriy'],
+            publishedYear: '1926',
+        ));
+
+        $this->assertSame(2, Book::count());
+    }
+
+    public function test_every_book_now_carries_a_fingerprint(): void
+    {
+        $book = $this->upsert($this->raw());
+
+        $this->assertNotNull($book->fingerprint, 'even with an ISBN, so other sources can find it');
+        $this->assertSame(40, strlen((string) $book->fingerprint));
+    }
 }

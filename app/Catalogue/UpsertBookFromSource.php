@@ -49,27 +49,54 @@ final readonly class UpsertBookFromSource
     }
 
     /**
-     * A valid ISBN-13 is the merge key. Without one, the fingerprint of the
-     * normalized title, first author and year stands in.
+     * Find the book this record describes, or start one.
+     *
+     * A valid ISBN-13 is still the primary key. The fingerprint is the bridge
+     * between sources: most Uzbek shops publish no ISBN, so without it their
+     * records would sit beside the same book from a source that did have one
+     * instead of enriching it.
+     *
+     * Both directions are handled. A record with an ISBN adopts a matching
+     * ISBN-less book already stored, and a record without one attaches to a
+     * book that has an ISBN.
      */
     private function resolveBook(RawBook $raw): Book
     {
         $isbn13 = normalize_isbn($raw->isbn);
         $title = strip_title_noise((string) $raw->title);
-
-        if ($isbn13 !== null) {
-            return Book::firstOrCreate(
-                ['isbn13' => $isbn13],
-                ['title' => $title, 'title_normalized' => normalize_title($title)],
-            );
-        }
-
         $fingerprint = book_fingerprint(
             $title,
             $raw->authors[0] ?? null,
             self::year($raw->publishedYear),
         );
 
+        if ($isbn13 !== null) {
+            $book = Book::where('isbn13', $isbn13)->first();
+
+            if ($book !== null) {
+                return $book;
+            }
+
+            // The same book may already be here from a source with no ISBN.
+            // Adopt it rather than starting a duplicate.
+            $orphan = Book::whereNull('isbn13')->where('fingerprint', $fingerprint)->first();
+
+            if ($orphan !== null) {
+                $orphan->forceFill(['isbn13' => $isbn13])->save();
+
+                return $orphan;
+            }
+
+            return Book::create([
+                'isbn13' => $isbn13,
+                'fingerprint' => $fingerprint,
+                'title' => $title,
+                'title_normalized' => normalize_title($title),
+            ]);
+        }
+
+        // No ISBN: the fingerprint is all there is. A book already stored with
+        // an ISBN is a valid match, and the better record to enrich.
         return Book::firstOrCreate(
             ['fingerprint' => $fingerprint],
             ['title' => $title, 'title_normalized' => normalize_title($title)],
