@@ -16,6 +16,9 @@ x-app: &app
     # An explicit tag makes app, queue and scheduler share one build instead of
     # each producing its own copy of the same image.
     image: book-scraper-dev:latest
+    # Comes back after a reboot or a Docker Desktop restart, but stays down
+    # if you stopped it yourself with `docker compose stop`.
+    restart: unless-stopped
     environment:
         XDEBUG_MODE: ${XDEBUG_MODE:-off}
         PHP_IDE_CONFIG: serverName=book-scraper
@@ -38,6 +41,7 @@ services:
 
     web:
         image: nginx:stable-alpine
+        restart: unless-stopped
         ports:
             - "${APP_PORT:-8000}:80"
         volumes:
@@ -48,6 +52,7 @@ services:
 
     mysql:
         image: mysql:8.4
+        restart: unless-stopped
         ports:
             - "${FORWARD_DB_PORT:-3306}:3306"
         environment:
@@ -78,6 +83,7 @@ services:
     # Vite dev server with hot module replacement.
     vite:
         image: node:22-alpine
+        restart: unless-stopped
         working_dir: /app
         ports:
             - "${VITE_PORT:-5173}:5173"
@@ -92,6 +98,7 @@ services:
     # Database browser. Dev only: it is deliberately absent from compose.prod.yaml.
     adminer:
         image: adminer:5
+        restart: unless-stopped
         ports:
             - "${ADMINER_PORT:-8080}:8080"
         environment:

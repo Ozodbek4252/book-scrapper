@@ -75,6 +75,26 @@ docker compose exec app composer install
 docker compose exec vite npm install <package>
 ```
 
+### Starting and stopping
+
+Start the stack once and it keeps running — across terminal sessions, and now
+across reboots too, since every service is `restart: unless-stopped`. You do not
+need to run `up` again each time.
+
+| Command | What it does |
+| ------- | ------------ |
+| `docker compose up -d` | Build if needed, then start everything |
+| `docker compose stop` | Stop the containers, keep them; they stay down until you start them |
+| `docker compose start` | Start them again, no rebuild |
+| `docker compose ps` | See what is running |
+| `docker compose logs -f app` | Follow one service's output |
+| `docker compose down` | Remove the containers; **named volumes are kept** |
+| `docker compose down -v` | Remove the containers **and delete the MySQL data** |
+
+`down` is safe for your data — only `-v` wipes the database. After `stop`, the
+containers stay stopped even when Docker restarts, which is what
+`unless-stopped` means.
+
 ### Browsing the database
 
 Adminer is at http://localhost:8080. The server field is already filled in with
