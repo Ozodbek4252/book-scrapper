@@ -25,3 +25,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Local database dump, carried by hand between machines
+book-scraper-dump.sql.gz
