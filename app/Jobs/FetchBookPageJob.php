@@ -74,7 +74,8 @@ class FetchBookPageJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $upsert = new NormalizeAndUpsertJob($this->sourceKey, $raw->toArray(), $this->runId);
+        $upsert = (new NormalizeAndUpsertJob($this->sourceKey, $raw->toArray(), $this->runId))
+            ->onQueue((string) config('scraping.queue_upserts'));
 
         // Add it to this run's batch rather than dispatching alongside it, so
         // the run is not reported finished while its books are still landing.
@@ -84,7 +85,7 @@ class FetchBookPageJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        dispatch($upsert)->onQueue((string) config('scraping.queue'));
+        dispatch($upsert);
     }
 
     public function failed(?Throwable $exception): void

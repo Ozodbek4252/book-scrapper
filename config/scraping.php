@@ -82,6 +82,15 @@ return [
     'queue' => env('SCRAPING_QUEUE', 'scraping'),
 
     /*
+    | Upserts go on their own queue, listed ahead of the fetch queue on the
+    | worker. Fetching a whole catalogue takes hours, and without this the
+    | thousands of books already fetched would sit behind every remaining
+    | request instead of landing as they arrive.
+    */
+
+    'queue_upserts' => env('SCRAPING_QUEUE_UPSERTS', 'scraping-upserts'),
+
+    /*
     |--------------------------------------------------------------------------
     | How much one run crawls
     |--------------------------------------------------------------------------
