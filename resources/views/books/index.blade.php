@@ -1,0 +1,85 @@
+<x-layouts.app title="Books">
+    <x-slot:heading>Books</x-slot:heading>
+    <x-slot:subheading>{{ Number::format($books->total()) }} in the catalogue</x-slot:subheading>
+
+    <x-slot:actions>
+        <form method="GET" action="{{ route('books.index') }}" class="flex flex-wrap items-center gap-2">
+            <label for="q" class="sr-only">Search by title or ISBN</label>
+            <input
+                id="q"
+                type="search"
+                name="q"
+                value="{{ $search }}"
+                placeholder="Title in either script, or ISBN"
+                class="w-72 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
+            >
+            <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                <input
+                    type="checkbox"
+                    name="unverified"
+                    value="1"
+                    @checked(request()->boolean('unverified'))
+                    class="rounded border-neutral-300 dark:border-neutral-700"
+                >
+                Unverified only
+            </label>
+            <button type="submit" class="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300">
+                Search
+            </button>
+        </form>
+    </x-slot:actions>
+
+    <x-card>
+        @if ($books->isEmpty())
+            <x-empty-state :message="$search !== '' ? "Nothing matches “{$search}”." : 'No books yet. Seed some with: php artisan db:seed'" />
+        @else
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+                        <tr>
+                            <th scope="col" class="px-5 py-3 font-medium">Title</th>
+                            <th scope="col" class="px-5 py-3 font-medium">Authors</th>
+                            <th scope="col" class="px-5 py-3 font-medium">Publisher</th>
+                            <th scope="col" class="px-5 py-3 font-medium">Year</th>
+                            <th scope="col" class="px-5 py-3 font-medium">ISBN</th>
+                            <th scope="col" class="px-5 py-3 text-right font-medium">Sources</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
+                        @foreach ($books as $book)
+                            <tr class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                                <td class="px-5 py-3">
+                                    <a href="{{ route('books.show', $book) }}" class="font-medium hover:underline">
+                                        {{ $book->title }}
+                                    </a>
+                                    @if ($book->title_cyrillic && $book->title_cyrillic !== $book->title)
+                                        <span class="block text-xs text-neutral-500 dark:text-neutral-400">{{ $book->title_cyrillic }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3 text-neutral-600 dark:text-neutral-400">
+                                    {{ $book->authors->pluck('full_name')->join(', ') ?: '—' }}
+                                </td>
+                                <td class="px-5 py-3 text-neutral-600 dark:text-neutral-400">
+                                    {{ $book->publisher?->name ?? '—' }}
+                                </td>
+                                <td class="px-5 py-3 tabular-nums text-neutral-600 dark:text-neutral-400">
+                                    {{ $book->published_year ?? '—' }}
+                                </td>
+                                <td class="px-5 py-3 font-mono text-xs text-neutral-600 dark:text-neutral-400">
+                                    {{ $book->isbn13 ?? '—' }}
+                                </td>
+                                <td class="px-5 py-3 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
+                                    {{ $book->sources_count }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </x-card>
+
+    @if ($books->hasPages())
+        <div class="mt-6">{{ $books->links() }}</div>
+    @endif
+</x-layouts.app>

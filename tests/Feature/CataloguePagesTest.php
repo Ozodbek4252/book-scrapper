@@ -1,0 +1,164 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature;
+
+use App\Enums\ScrapeStage;
+use App\Models\Author;
+use App\Models\Book;
+use App\Models\BookSource;
+use App\Models\Publisher;
+use App\Models\ScrapeError;
+use App\Models\ScrapeRun;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class CataloguePagesTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_the_dashboard_shows_the_catalogue_size(): void
+    {
+        Book::factory()->count(3)->create();
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Dashboard')
+            ->assertSee('Books per source');
+    }
+
+    public function test_the_dashboard_works_on_an_empty_catalogue(): void
+    {
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('No source has been scraped yet.')
+            ->assertSee('No scrape has run yet.');
+    }
+
+    public function test_the_book_list_shows_titles_in_both_scripts(): void
+    {
+        Book::factory()->create([
+            'title' => 'Oʻtkan kunlar',
+            'title_cyrillic' => 'Ўткан кунлар',
+        ]);
+
+        $this->get(route('books.index'))
+            ->assertOk()
+            ->assertSee('Oʻtkan kunlar', escape: false)
+            ->assertSee('Ўткан кунлар', escape: false);
+    }
+
+    public function test_the_book_list_searches_the_cyrillic_title(): void
+    {
+        $match = Book::factory()->create(['title' => 'Latin one', 'title_cyrillic' => 'Ўткан кунлар']);
+        $other = Book::factory()->create(['title' => 'Shaytanat', 'title_cyrillic' => 'Шайтанат']);
+
+        $this->get(route('books.index', ['q' => 'Ўткан']))
+            ->assertOk()
+            ->assertSee($match->title)
+            ->assertDontSee($other->title);
+    }
+
+    public function test_the_book_list_searches_by_isbn(): void
+    {
+        $book = Book::factory()->create(['isbn13' => '9789943123456']);
+        Book::factory()->create();
+
+        $this->get(route('books.index', ['q' => '9789943123456']))
+            ->assertOk()
+            ->assertSee('9789943123456');
+    }
+
+    public function test_the_book_list_can_filter_to_unverified_books(): void
+    {
+        $unverified = Book::factory()->create(['title' => 'Needs review']);
+        $verified = Book::factory()->verified()->create(['title' => 'Already checked']);
+
+        $this->get(route('books.index', ['unverified' => 1]))
+            ->assertOk()
+            ->assertSee('Needs review')
+            ->assertDontSee('Already checked');
+    }
+
+    public function test_the_book_list_says_so_when_a_search_matches_nothing(): void
+    {
+        Book::factory()->create();
+
+        $this->get(route('books.index', ['q' => 'nothing matches this']))
+            ->assertOk()
+            ->assertSee('Nothing matches');
+    }
+
+    public function test_a_book_page_shows_its_authors_publisher_and_sources(): void
+    {
+        $publisher = Publisher::factory()->create(['name' => 'Akademnashr']);
+        $book = Book::factory()->for($publisher)->create();
+        $author = Author::factory()->create(['full_name' => 'Abdulla Qodiriy']);
+        $book->authors()->attach($author, ['position' => 0]);
+        BookSource::factory()->for($book)->forSource('kitob_uz')->create();
+
+        $this->get(route('books.show', $book))
+            ->assertOk()
+            ->assertSee('Abdulla Qodiriy')
+            ->assertSee('Akademnashr')
+            ->assertSee('kitob_uz');
+    }
+
+    public function test_a_book_page_renders_the_raw_payload(): void
+    {
+        $book = Book::factory()->create();
+        BookSource::factory()->for($book)->create(['raw_payload' => ['title' => 'Ўткан кунлар']]);
+
+        $this->get(route('books.show', $book))
+            ->assertOk()
+            ->assertSee('Raw payload')
+            ->assertSee('Ўткан кунлар', escape: false);
+    }
+
+    public function test_a_book_page_renders_without_a_publisher_or_sources(): void
+    {
+        $book = Book::factory()->create(['publisher_id' => null]);
+
+        $this->get(route('books.show', $book))
+            ->assertOk()
+            ->assertSee('No source has claimed this book yet.');
+    }
+
+    public function test_an_unknown_book_is_a_404(): void
+    {
+        $this->get(route('books.show', 999))->assertNotFound();
+    }
+
+    public function test_the_run_list_shows_counters_and_status(): void
+    {
+        ScrapeRun::factory()->completed()->create(['source_key' => 'kitob_uz']);
+
+        $this->get(route('scrape-runs.index'))
+            ->assertOk()
+            ->assertSee('kitob_uz')
+            ->assertSee('Completed');
+    }
+
+    public function test_a_run_page_lists_its_errors(): void
+    {
+        $run = ScrapeRun::factory()->failed()->create();
+        ScrapeError::factory()->for($run, 'run')->atStage(ScrapeStage::Parse)->create([
+            'message' => 'Title selector matched nothing',
+        ]);
+
+        $this->get(route('scrape-runs.show', $run))
+            ->assertOk()
+            ->assertSee('Title selector matched nothing')
+            ->assertSee('parse');
+    }
+
+    public function test_a_run_page_says_so_when_there_are_no_errors(): void
+    {
+        $run = ScrapeRun::factory()->completed()->create();
+
+        $this->get(route('scrape-runs.show', $run))
+            ->assertOk()
+            ->assertSee('This run logged no errors.');
+    }
+}
