@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\TrustLevel;
+use App\Scraping\Drivers\AsaxiyUzDriver;
 use App\Scraping\SourceRegistry;
 use InvalidArgumentException;
 use Tests\TestCase;
@@ -18,12 +19,30 @@ class SourceRegistryTest extends TestCase
         $this->assertFalse($this->registry()->has('not-a-shop.uz'));
     }
 
-    public function test_no_source_ships_with_a_driver_or_switched_on(): void
+    public function test_asaxiy_is_the_only_source_with_a_driver_so_far(): void
+    {
+        $registry = $this->registry();
+
+        $this->assertTrue($registry->hasDriver('asaxiy_uz'));
+
+        foreach (array_diff($registry->keys(), ['asaxiy_uz']) as $key) {
+            $this->assertFalse($registry->hasDriver($key), "[{$key}] has a driver already.");
+        }
+    }
+
+    public function test_no_source_is_switched_on_by_default(): void
     {
         foreach ($this->registry()->keys() as $key) {
-            $this->assertFalse($this->registry()->hasDriver($key), "[{$key}] has a driver already.");
             $this->assertFalse($this->registry()->isEnabled($key), "[{$key}] is enabled already.");
         }
+    }
+
+    public function test_the_asaxiy_driver_resolves_to_the_real_class(): void
+    {
+        $this->assertInstanceOf(
+            AsaxiyUzDriver::class,
+            $this->registry()->driverFor('asaxiy_uz'),
+        );
     }
 
     public function test_publisher_sites_outrank_bookstores(): void

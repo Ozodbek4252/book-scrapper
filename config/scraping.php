@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\TrustLevel;
+use App\Scraping\Drivers\AsaxiyUzDriver;
 
 return [
 
@@ -101,8 +102,8 @@ return [
         ],
 
         'asaxiy_uz' => [
-            'driver' => null,
-            'enabled' => false,
+            'driver' => AsaxiyUzDriver::class,
+            'enabled' => env('SCRAPING_ASAXIY_ENABLED', false),
             'base_url' => 'https://asaxiy.uz',
             'rate_limit' => 1,
             'trust_level' => TrustLevel::Bookstore,
