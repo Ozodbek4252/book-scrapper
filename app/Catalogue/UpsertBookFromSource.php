@@ -129,11 +129,15 @@ final readonly class UpsertBookFromSource
             'publisher_id' => $publisherName === null ? null : $this->publisherFor($publisherName)->id,
         ], static fn (mixed $value): bool => $value !== null);
 
-        $locked = $book->locked_fields ?? [];
+        $writable = array_filter(
+            $attributes,
+            static fn (string $field): bool => ! $book->isLocked($field),
+            ARRAY_FILTER_USE_KEY,
+        );
 
-        $book->fill(array_diff_key($attributes, array_flip($locked)))->save();
+        $book->fill($writable)->save();
 
-        if ($authorNames !== [] && ! in_array('authors', $locked, true)) {
+        if ($authorNames !== [] && ! $book->isLocked('authors')) {
             $this->syncAuthors($book, $authorNames);
         }
     }
