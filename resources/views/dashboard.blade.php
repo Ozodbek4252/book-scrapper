@@ -32,15 +32,32 @@
     </div>
 
     <div class="mt-8 grid gap-6 lg:grid-cols-2">
-        <x-card title="Books per source">
-            @if ($booksPerSource->isEmpty())
-                <x-empty-state message="No source has been scraped yet." />
+        <x-card title="Sources">
+            @if ($sources->isEmpty())
+                <x-empty-state message="No source is configured in config/scraping.php." />
             @else
                 <ul class="divide-y divide-neutral-200 dark:divide-neutral-800">
-                    @foreach ($booksPerSource as $sourceKey => $total)
-                        <li class="flex items-center justify-between px-5 py-3 text-sm">
-                            <span class="font-mono">{{ $sourceKey }}</span>
-                            <span class="tabular-nums text-neutral-500 dark:text-neutral-400">{{ Number::format($total) }}</span>
+                    @foreach ($sources as $source)
+                        <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+                            <span class="flex items-center gap-2">
+                                <span class="font-mono">{{ $source['key'] }}</span>
+                                @if (! $source['has_driver'])
+                                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                                        No driver yet
+                                    </span>
+                                @elseif ($source['enabled'])
+                                    <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                        Enabled
+                                    </span>
+                                @else
+                                    <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                                        Disabled
+                                    </span>
+                                @endif
+                            </span>
+                            <span class="tabular-nums text-neutral-500 dark:text-neutral-400">
+                                {{ Number::format($source['books']) }} books
+                            </span>
                         </li>
                     @endforeach
                 </ul>

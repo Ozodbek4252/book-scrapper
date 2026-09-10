@@ -87,6 +87,26 @@ final readonly class CatalogueStatistics
             ->map(fn (int|string $total): int => (int) $total);
     }
 
+    /**
+     * Every configured source, whether it can actually run, and what it has
+     * contributed so far. A source with no driver cannot scrape at all.
+     *
+     * @return Collection<int, array{key: string, enabled: bool, has_driver: bool, books: int}>
+     */
+    public function sources(): Collection
+    {
+        $counts = $this->booksPerSource();
+
+        return collect(config('scraping.sources', []))
+            ->map(fn (array $source, string $key): array => [
+                'key' => $key,
+                'enabled' => (bool) ($source['enabled'] ?? false),
+                'has_driver' => ($source['driver'] ?? null) !== null,
+                'books' => $counts->get($key, 0),
+            ])
+            ->values();
+    }
+
     private function percentOf(int $part, int $total): float
     {
         return $total === 0 ? 0.0 : round($part / $total * 100, 1);

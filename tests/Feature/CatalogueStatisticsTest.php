@@ -63,6 +63,27 @@ class CatalogueStatisticsTest extends TestCase
         $this->assertSame(2, (new CatalogueStatistics)->summary()['added_recently']);
     }
 
+    public function test_it_reports_which_sources_can_actually_run(): void
+    {
+        config(['scraping.sources' => [
+            'ready_shop' => ['driver' => 'App\\Scraping\\Drivers\\Whatever', 'enabled' => true],
+            'written_but_off' => ['driver' => 'App\\Scraping\\Drivers\\Whatever', 'enabled' => false],
+            'not_written_yet' => ['driver' => null, 'enabled' => false],
+        ]]);
+        BookSource::factory()->count(2)->forSource('ready_shop')->create();
+
+        $sources = (new CatalogueStatistics)->sources();
+
+        $this->assertSame(
+            [
+                ['key' => 'ready_shop', 'enabled' => true, 'has_driver' => true, 'books' => 2],
+                ['key' => 'written_but_off', 'enabled' => false, 'has_driver' => true, 'books' => 0],
+                ['key' => 'not_written_yet', 'enabled' => false, 'has_driver' => false, 'books' => 0],
+            ],
+            $sources->all(),
+        );
+    }
+
     public function test_it_groups_books_by_source_busiest_first(): void
     {
         BookSource::factory()->count(3)->forSource('kitob_uz')->create();

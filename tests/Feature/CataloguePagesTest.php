@@ -25,14 +25,13 @@ class CataloguePagesTest extends TestCase
         $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Dashboard')
-            ->assertSee('Books per source');
+            ->assertSee('Sources');
     }
 
     public function test_the_dashboard_works_on_an_empty_catalogue(): void
     {
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('No source has been scraped yet.')
             ->assertSee('No scrape has run yet.');
     }
 
