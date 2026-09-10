@@ -72,7 +72,7 @@ services:
 
   queue:
     <<: *app
-    command: php artisan queue:work --queue=scraping,default --tries=3 --max-time=3600 --sleep=1
+    command: php artisan queue:work --queue=scraping,default --tries=3 --timeout=1800 --max-time=3600 --sleep=1
     healthcheck:
       disable: true
     depends_on:

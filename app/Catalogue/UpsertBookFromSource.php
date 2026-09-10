@@ -115,16 +115,16 @@ final readonly class UpsertBookFromSource
         $publisherName = $this->firstValue($records, fn (RawBook $r) => $r->publisher);
 
         $attributes = array_filter([
-            'title' => $title === '' ? null : $title,
-            'title_latin' => $title === '' ? null : to_latin($title),
-            'title_cyrillic' => $title === '' ? null : to_cyrillic($title),
-            'title_normalized' => $title === '' ? null : normalize_title($title),
-            'subtitle' => $this->firstValue($records, fn (RawBook $r) => $r->subtitle),
+            'title' => $title === '' ? null : self::clamp($title),
+            'title_latin' => $title === '' ? null : self::clamp(to_latin($title)),
+            'title_cyrillic' => $title === '' ? null : self::clamp(to_cyrillic($title)),
+            'title_normalized' => $title === '' ? null : self::clamp(normalize_title($title)),
+            'subtitle' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->subtitle)),
             'published_year' => self::year($this->firstValue($records, fn (RawBook $r) => $r->publishedYear)),
             'pages' => self::digits($this->firstValue($records, fn (RawBook $r) => $r->pages)),
-            'language' => $this->firstValue($records, fn (RawBook $r) => $r->language),
+            'language' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->language), 64),
             'description' => $this->firstValue($records, fn (RawBook $r) => $r->description),
-            'cover_url' => $this->firstValue($records, fn (RawBook $r) => $r->coverUrl),
+            'cover_url' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->coverUrl), 2048),
             'isbn13' => normalize_isbn($this->firstValue($records, fn (RawBook $r) => $r->isbn)),
             'publisher_id' => $publisherName === null ? null : $this->publisherFor($publisherName)->id,
         ], static fn (mixed $value): bool => $value !== null);
@@ -163,9 +163,9 @@ final readonly class UpsertBookFromSource
         return Publisher::firstOrCreate(
             ['name_normalized' => normalize_title($name)],
             [
-                'name' => $name,
-                'name_latin' => $latin,
-                'name_cyrillic' => to_cyrillic($name),
+                'name' => self::clamp($name),
+                'name_latin' => self::clamp($latin),
+                'name_cyrillic' => self::clamp(to_cyrillic($name)),
             ],
         );
     }
@@ -184,11 +184,11 @@ final readonly class UpsertBookFromSource
             $author = Author::firstOrCreate(
                 ['full_name_normalized' => normalize_author_name($name)],
                 [
-                    'full_name' => $name,
-                    'full_name_latin' => $latin,
-                    'full_name_cyrillic' => to_cyrillic($name),
-                    'given_name' => $parts['given'],
-                    'family_name' => $parts['family'],
+                    'full_name' => self::clamp($name),
+                    'full_name_latin' => self::clamp($latin),
+                    'full_name_cyrillic' => self::clamp(to_cyrillic($name)),
+                    'given_name' => self::clamp($parts['given']),
+                    'family_name' => self::clamp($parts['family']),
                 ],
             );
 
@@ -220,6 +220,22 @@ final readonly class UpsertBookFromSource
         }
 
         return (int) $match[1];
+    }
+
+    /**
+     * Keep a value inside its column.
+     *
+     * Sites print whatever they like in these fields, and transliteration can
+     * lengthen a string on top of that. Losing the tail of one odd value beats
+     * losing the whole book, and the full text is kept on the source row.
+     */
+    private static function clamp(?string $value, int $length = 255): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return mb_strlen($value) <= $length ? $value : mb_substr($value, 0, $length);
     }
 
     private static function decimal(?string $value): ?string

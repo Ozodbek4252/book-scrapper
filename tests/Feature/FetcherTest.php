@@ -90,7 +90,12 @@ class FetcherTest extends TestCase
 
         Storage::disk('local')->assertExists($path);
         $this->assertStringContainsString(sha1(self::PAGE), $path);
-        $this->assertStringContainsString('<html>raw</html>', (string) Storage::disk('local')->get($path));
+
+        $stored = (string) Storage::disk('local')->get($path);
+
+        // Written compressed: a full catalogue is 5 GB raw and 0.5 GB gzipped.
+        $this->assertStringStartsWith("\x1f\x8b", $stored, 'the cache entry should be gzipped');
+        $this->assertStringContainsString('<html>raw</html>', (string) gzdecode($stored));
     }
 
     public function test_a_refresh_goes_back_to_the_network(): void
@@ -201,6 +206,21 @@ class FetcherTest extends TestCase
             'file scheme' => ['file:///etc/passwd', 'absolute http(s) URL'],
             'carries credentials' => ['https://user:secret@kitob.uz/x', 'carries credentials'],
         ];
+    }
+
+    public function test_it_still_reads_entries_written_before_the_cache_was_compressed(): void
+    {
+        $cache = app(ResponseCache::class);
+        $path = $cache->pathFor(self::PAGE);
+
+        Storage::disk('local')->put($path, (string) json_encode([
+            'url' => self::PAGE,
+            'status' => 200,
+            'body' => '<html>legacy uncompressed</html>',
+            'fetched_at' => now()->toIso8601String(),
+        ]));
+
+        $this->assertSame('<html>legacy uncompressed</html>', $cache->get(self::PAGE)?->body);
     }
 
     #[DataProvider('refusedUrls')]

@@ -37,8 +37,11 @@ final readonly class AsaxiyUzDriver implements SourceDriver
     /** Product tiles link to /product/{slug} with no second path segment. */
     private const PRODUCT_LINK_PATTERN = '#href="(/product/[a-z0-9][a-z0-9-]{7,})"#i';
 
-    /** Stops a category walk if their pagination ever stops terminating. */
-    private const MAX_CATEGORY_PAGES = 100;
+    /**
+     * A safety stop in case their pagination never terminates. The whole book
+     * catalogue is around 275 pages, so this is well clear of a real walk.
+     */
+    private const MAX_CATEGORY_PAGES = 2000;
 
     private const XPATH_JSON_LD = '//script[@type="application/ld+json"]';
 
@@ -87,11 +90,7 @@ final readonly class AsaxiyUzDriver implements SourceDriver
     public function discover(): Generator
     {
         $categories = $this->categoryPaths();
-        $bookCategories = array_values(array_filter(
-            $categories,
-            static fn (string $path): bool => str_starts_with($path, self::BOOK_CATEGORY_PREFIX),
-        ));
-
+        $bookCategories = $this->bookCategories($categories);
         $categoryLookup = array_flip($categories);
         $seen = [];
 
@@ -122,6 +121,28 @@ final readonly class AsaxiyUzDriver implements SourceDriver
                 }
             }
         }
+    }
+
+    /**
+     * The smallest set of categories that still covers every book.
+     *
+     * /product/knigi lists the whole book catalogue, and the other book
+     * categories are subsets of it. Walking only the parent halves the number
+     * of category pages requested and finds exactly the same products.
+     *
+     * @param  array<int, string>  $categories
+     * @return array<int, string>
+     */
+    private function bookCategories(array $categories): array
+    {
+        $books = array_values(array_filter(
+            $categories,
+            static fn (string $path): bool => str_starts_with($path, self::BOOK_CATEGORY_PREFIX),
+        ));
+
+        return in_array(self::BOOK_CATEGORY_PREFIX, $books, true)
+            ? [self::BOOK_CATEGORY_PREFIX]
+            : $books;
     }
 
     /**

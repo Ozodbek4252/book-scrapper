@@ -87,7 +87,8 @@ return [
     |
     | A full catalogue is tens of thousands of pages, and at one request per
     | second that is most of a day. A run stops after this many product pages
-    | so a manual run finishes while you are still watching it.
+    | so a manual run finishes while you are still watching it. Set it to 0
+    | to take the whole catalogue.
     |
     */
 

@@ -182,4 +182,33 @@ class UpsertBookFromSourceTest extends TestCase
         $this->assertTrue($first['created']);
         $this->assertFalse($second['created']);
     }
+
+    public function test_a_multilingual_book_does_not_overflow_the_language_column(): void
+    {
+        // A real asaxiy listing. It is 31 characters; the column used to be 16.
+        $book = $this->upsert($this->raw(['language' => "O'zb/Rus O'zbekcha Узб/Рус/Англ"]));
+
+        $this->assertSame("O'zb/Rus O'zbekcha Узб/Рус/Англ", $book->language);
+    }
+
+    public function test_an_absurdly_long_value_is_trimmed_rather_than_losing_the_book(): void
+    {
+        $book = $this->upsert($this->raw([
+            'title' => str_repeat('Oʻtkan kunlar ', 60),
+            'language' => str_repeat('uz/', 80),
+        ]));
+
+        $this->assertSame(255, mb_strlen((string) $book->title));
+        $this->assertSame(64, mb_strlen((string) $book->language));
+        $this->assertNotNull($book->id, 'the book must still be stored');
+    }
+
+    public function test_the_untrimmed_value_survives_on_the_source_row(): void
+    {
+        $long = str_repeat('uz/', 80);
+
+        $this->upsert($this->raw(['language' => $long]));
+
+        $this->assertSame($long, BookSource::sole()->raw_payload['language']);
+    }
 }

@@ -101,4 +101,26 @@ class AsaxiyUzDiscoverTest extends TestCase
         $this->assertSame('https://asaxiy.uz/product/jorj-oruell-1984', $generator->current());
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'page=2'));
     }
+
+    public function test_it_walks_only_the_parent_category_when_the_site_lists_one(): void
+    {
+        // /product/knigi holds the whole book catalogue, so its children are
+        // redundant requests to someone else's server.
+        Http::fake([
+            '*/robots.txt' => Http::response("User-agent: *\nDisallow: /admin"),
+            'https://asaxiy.uz/sitemap-categories.xml' => Http::response(
+                '<urlset>'
+                .'<url><loc>https://asaxiy.uz/product/knigi</loc></url>'
+                .'<url><loc>https://asaxiy.uz/product/knigi/bestseller</loc></url>'
+                .'</urlset>'
+            ),
+            'https://asaxiy.uz/product/knigi' => Http::response('<a href="/product/jorj-oruell-1984">1984</a>'),
+            'https://asaxiy.uz/product/knigi?page=2' => Http::response(''),
+        ]);
+
+        $urls = iterator_to_array(app(AsaxiyUzDriver::class)->discover());
+
+        $this->assertSame(['https://asaxiy.uz/product/jorj-oruell-1984'], $urls);
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'knigi/bestseller'));
+    }
 }

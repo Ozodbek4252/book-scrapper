@@ -28,6 +28,12 @@ class DiscoverSourceJob implements ShouldBeUnique, ShouldQueue
     public int $tries = 1;
 
     /**
+     * Walking a whole catalogue's category pages at one request per second
+     * takes minutes. This must stay below the queue's retry_after.
+     */
+    public int $timeout = 1800;
+
+    /**
      * Release the uniqueness lock after an hour so a crashed worker cannot
      * block a source forever.
      */
@@ -79,13 +85,14 @@ class DiscoverSourceJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $limit = max((int) config('scraping.max_pages_per_run', 200), 1);
+        // Zero means take the whole catalogue.
+        $limit = (int) config('scraping.max_pages_per_run', 200);
         $jobs = [];
 
         foreach ($driver->discover() as $url) {
             $jobs[] = new FetchBookPageJob($this->sourceKey, $url, $run->id);
 
-            if (count($jobs) >= $limit) {
+            if ($limit > 0 && count($jobs) >= $limit) {
                 break;
             }
         }
