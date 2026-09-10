@@ -21,7 +21,7 @@ class ScrapeRunFactory extends Factory
     public function definition(): array
     {
         return [
-            'source_key' => 'kitob_uz',
+            'source_key' => 'asaxiy_uz',
             'status' => ScrapeRunStatus::Pending,
             'started_at' => null,
             'finished_at' => null,

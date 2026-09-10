@@ -20,9 +20,9 @@ class DiscoverSourceJobTest extends TestCase
 
     public function test_it_fails_the_run_when_no_driver_is_written_yet(): void
     {
-        config(['scraping.sources.kitob_uz' => ['driver' => null, 'enabled' => true]]);
+        config(['scraping.sources.asaxiy_uz' => ['driver' => null, 'enabled' => true]]);
 
-        $run = $this->runDiscoveryFor('kitob_uz');
+        $run = $this->runDiscoveryFor('asaxiy_uz');
 
         $this->assertSame(ScrapeRunStatus::Failed, $run->status);
         $this->assertStringContainsString('No driver is written', $run->errors->first()->message);
@@ -31,9 +31,9 @@ class DiscoverSourceJobTest extends TestCase
 
     public function test_it_fails_the_run_when_the_source_is_switched_off(): void
     {
-        config(['scraping.sources.kitob_uz' => ['driver' => FakeDriver::class, 'enabled' => false]]);
+        config(['scraping.sources.asaxiy_uz' => ['driver' => FakeDriver::class, 'enabled' => false]]);
 
-        $run = $this->runDiscoveryFor('kitob_uz');
+        $run = $this->runDiscoveryFor('asaxiy_uz');
 
         $this->assertSame(ScrapeRunStatus::Failed, $run->status);
         $this->assertStringContainsString('is disabled', $run->errors->first()->message);
@@ -43,10 +43,10 @@ class DiscoverSourceJobTest extends TestCase
     {
         config([
             'scraping.enabled' => false,
-            'scraping.sources.kitob_uz' => ['driver' => FakeDriver::class, 'enabled' => true],
+            'scraping.sources.asaxiy_uz' => ['driver' => FakeDriver::class, 'enabled' => true],
         ]);
 
-        $run = $this->runDiscoveryFor('kitob_uz');
+        $run = $this->runDiscoveryFor('asaxiy_uz');
 
         $this->assertSame(ScrapeRunStatus::Failed, $run->status);
         $this->assertStringContainsString('switched off globally', $run->errors->first()->message);
@@ -54,9 +54,9 @@ class DiscoverSourceJobTest extends TestCase
 
     public function test_it_completes_and_counts_what_discovery_yielded(): void
     {
-        config(['scraping.sources.kitob_uz' => ['driver' => FakeDriver::class, 'enabled' => true]]);
+        config(['scraping.sources.asaxiy_uz' => ['driver' => FakeDriver::class, 'enabled' => true]]);
 
-        $run = $this->runDiscoveryFor('kitob_uz');
+        $run = $this->runDiscoveryFor('asaxiy_uz');
 
         $this->assertSame(ScrapeRunStatus::Completed, $run->status);
         $this->assertSame(3, $run->items_found);
@@ -67,18 +67,18 @@ class DiscoverSourceJobTest extends TestCase
 
     public function test_a_failed_run_reports_the_number_of_errors_it_really_has(): void
     {
-        config(['scraping.sources.kitob_uz' => ['driver' => null, 'enabled' => true]]);
+        config(['scraping.sources.asaxiy_uz' => ['driver' => null, 'enabled' => true]]);
 
-        $run = $this->runDiscoveryFor('kitob_uz');
+        $run = $this->runDiscoveryFor('asaxiy_uz');
 
         $this->assertSame($run->errors()->count(), $run->errors_count);
     }
 
     public function test_it_survives_a_run_that_was_deleted_before_the_worker_picked_it_up(): void
     {
-        config(['scraping.sources.kitob_uz' => ['driver' => null, 'enabled' => true]]);
+        config(['scraping.sources.asaxiy_uz' => ['driver' => null, 'enabled' => true]]);
 
-        (new DiscoverSourceJob('kitob_uz', 999))->handle(app(SourceRegistry::class));
+        (new DiscoverSourceJob('asaxiy_uz', 999))->handle(app(SourceRegistry::class));
 
         $this->assertSame(0, ScrapeRun::count());
     }
@@ -97,7 +97,7 @@ class FakeDriver implements SourceDriver
 {
     public function key(): string
     {
-        return 'kitob_uz';
+        return 'asaxiy_uz';
     }
 
     public function discover(): iterable

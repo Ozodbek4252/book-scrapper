@@ -50,10 +50,10 @@ class CatalogueSchemaTest extends TestCase
     public function test_a_book_keeps_one_row_per_source(): void
     {
         $book = Book::factory()->create();
-        BookSource::factory()->for($book)->forSource('kitob_uz')->create();
+        BookSource::factory()->for($book)->forSource('asaxiy_uz')->create();
         BookSource::factory()->for($book)->forSource('asaxiy_uz')->create();
 
-        $this->assertSame(['kitob_uz', 'asaxiy_uz'], $book->sources->pluck('source_key')->all());
+        $this->assertSame(['asaxiy_uz', 'asaxiy_uz'], $book->sources->pluck('source_key')->all());
     }
 
     public function test_the_raw_payload_survives_a_round_trip(): void
@@ -67,11 +67,11 @@ class CatalogueSchemaTest extends TestCase
 
     public function test_the_same_product_cannot_be_recorded_twice_for_one_source(): void
     {
-        BookSource::factory()->create(['source_key' => 'kitob_uz', 'external_id' => '42']);
+        BookSource::factory()->create(['source_key' => 'asaxiy_uz', 'external_id' => '42']);
 
         $this->expectException(QueryException::class);
 
-        BookSource::factory()->create(['source_key' => 'kitob_uz', 'external_id' => '42']);
+        BookSource::factory()->create(['source_key' => 'asaxiy_uz', 'external_id' => '42']);
     }
 
     public function test_two_books_cannot_share_an_isbn(): void

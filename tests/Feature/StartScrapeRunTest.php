@@ -20,15 +20,15 @@ class StartScrapeRunTest extends TestCase
     {
         Queue::fake();
 
-        $run = (new StartScrapeRun)->handle('kitob_uz');
+        $run = (new StartScrapeRun)->handle('asaxiy_uz');
 
-        $this->assertSame('kitob_uz', $run->source_key);
+        $this->assertSame('asaxiy_uz', $run->source_key);
         $this->assertSame(ScrapeRunStatus::Pending, $run->status);
         $this->assertNull($run->started_at);
 
         Queue::assertPushed(
             DiscoverSourceJob::class,
-            fn (DiscoverSourceJob $job): bool => $job->sourceKey === 'kitob_uz' && $job->runId === $run->id,
+            fn (DiscoverSourceJob $job): bool => $job->sourceKey === 'asaxiy_uz' && $job->runId === $run->id,
         );
     }
 
@@ -37,7 +37,7 @@ class StartScrapeRunTest extends TestCase
         Queue::fake();
         config(['scraping.queue' => 'scraping']);
 
-        (new StartScrapeRun)->handle('kitob_uz');
+        (new StartScrapeRun)->handle('asaxiy_uz');
 
         Queue::assertPushedOn('scraping', DiscoverSourceJob::class);
     }
@@ -74,7 +74,7 @@ class StartScrapeRunTest extends TestCase
         $this->get(route('scrape-runs.index'))
             ->assertOk()
             ->assertSee('Run now')
-            ->assertSee('kitob_uz')
+            ->assertSee('asaxiy_uz')
             ->assertSee('akademnashr');
     }
 }

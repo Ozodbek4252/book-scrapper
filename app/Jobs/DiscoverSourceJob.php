@@ -12,6 +12,7 @@ use App\Scraping\SourceRegistry;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Bus;
 use Throwable;
 
 /**
@@ -78,15 +79,49 @@ class DiscoverSourceJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $found = 0;
+        $limit = max((int) config('scraping.max_pages_per_run', 200), 1);
+        $jobs = [];
 
         foreach ($driver->discover() as $url) {
-            $found++;
+            $jobs[] = new FetchBookPageJob($this->sourceKey, $url, $run->id);
+
+            if (count($jobs) >= $limit) {
+                break;
+            }
         }
 
+        $run->update(['items_found' => count($jobs)]);
+
+        if ($jobs === []) {
+            $this->finish($run);
+
+            return;
+        }
+
+        $runId = $run->id;
+
+        Bus::batch($jobs)
+            ->name("scrape:{$this->sourceKey}:{$runId}")
+            ->onQueue((string) config('scraping.queue'))
+            // One bad page must not abandon the rest of the catalogue.
+            ->allowFailures()
+            ->finally(function () use ($runId): void {
+                $run = ScrapeRun::find($runId);
+
+                $run?->update([
+                    'status' => $run->errors_count > 0 && $run->items_new + $run->items_updated === 0
+                        ? ScrapeRunStatus::Failed
+                        : ScrapeRunStatus::Completed,
+                    'finished_at' => now(),
+                ]);
+            })
+            ->dispatch();
+    }
+
+    private function finish(ScrapeRun $run): void
+    {
         $run->update([
             'status' => ScrapeRunStatus::Completed,
-            'items_found' => $found,
             'finished_at' => now(),
         ]);
     }

@@ -103,13 +103,13 @@ class CataloguePagesTest extends TestCase
         $book = Book::factory()->for($publisher)->create();
         $author = Author::factory()->create(['full_name' => 'Abdulla Qodiriy']);
         $book->authors()->attach($author, ['position' => 0]);
-        BookSource::factory()->for($book)->forSource('kitob_uz')->create();
+        BookSource::factory()->for($book)->forSource('asaxiy_uz')->create();
 
         $this->get(route('books.show', $book))
             ->assertOk()
             ->assertSee('Abdulla Qodiriy')
             ->assertSee('Akademnashr')
-            ->assertSee('kitob_uz');
+            ->assertSee('asaxiy_uz');
     }
 
     public function test_a_book_page_renders_the_raw_payload(): void
@@ -139,11 +139,11 @@ class CataloguePagesTest extends TestCase
 
     public function test_the_run_list_shows_counters_and_status(): void
     {
-        ScrapeRun::factory()->completed()->create(['source_key' => 'kitob_uz']);
+        ScrapeRun::factory()->completed()->create(['source_key' => 'asaxiy_uz']);
 
         $this->get(route('scrape-runs.index'))
             ->assertOk()
-            ->assertSee('kitob_uz')
+            ->assertSee('asaxiy_uz')
             ->assertSee('Completed');
     }
 

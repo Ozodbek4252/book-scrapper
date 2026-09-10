@@ -41,7 +41,7 @@ class CatalogueSeeder extends Seeder
                         ->all(),
                 );
 
-                foreach (fake()->randomElements(['kitob_uz', 'asaxiy_uz'], fake()->numberBetween(1, 2)) as $sourceKey) {
+                foreach (fake()->randomElements(['asaxiy_uz', 'asaxiy_uz'], fake()->numberBetween(1, 2)) as $sourceKey) {
                     BookSource::factory()->for($book)->forSource($sourceKey)->create();
                 }
             });
@@ -51,7 +51,7 @@ class CatalogueSeeder extends Seeder
 
         Book::factory()->verified()->count(8)->recycle($publishers)->create();
 
-        foreach (['kitob_uz', 'asaxiy_uz', 'akademnashr'] as $sourceKey) {
+        foreach (['asaxiy_uz', 'asaxiy_uz', 'akademnashr'] as $sourceKey) {
             ScrapeRun::factory()->completed()->create(['source_key' => $sourceKey]);
         }
 
@@ -71,7 +71,7 @@ class CatalogueSeeder extends Seeder
         ];
 
         $failed = ScrapeRun::factory()->failed()->create([
-            'source_key' => 'kitob_uz',
+            'source_key' => 'asaxiy_uz',
             // The counter has to match the rows, or the run list and the run
             // page report different numbers.
             'errors_count' => count($errors),

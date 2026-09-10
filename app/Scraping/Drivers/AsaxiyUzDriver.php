@@ -27,10 +27,18 @@ final readonly class AsaxiyUzDriver implements SourceDriver
 {
     public const KEY = 'asaxiy_uz';
 
-    private const SITEMAP_INDEX = 'https://asaxiy.uz/sitemap.xml';
+    private const BASE_URL = 'https://asaxiy.uz';
 
-    /** Only the product sitemaps hold goods; the rest are articles and filters. */
-    private const SITEMAP_PRODUCTS_PATTERN = '#/sitemap-goods\d+\.xml$#';
+    private const SITEMAP_CATEGORIES = 'https://asaxiy.uz/sitemap-categories.xml';
+
+    /** Books live under this category branch. */
+    private const BOOK_CATEGORY_PREFIX = '/product/knigi';
+
+    /** Product tiles link to /product/{slug} with no second path segment. */
+    private const PRODUCT_LINK_PATTERN = '#href="(/product/[a-z0-9][a-z0-9-]{7,})"#i';
+
+    /** Stops a category walk if their pagination ever stops terminating. */
+    private const MAX_CATEGORY_PAGES = 100;
 
     private const XPATH_JSON_LD = '//script[@type="application/ld+json"]';
 
@@ -65,32 +73,89 @@ final readonly class AsaxiyUzDriver implements SourceDriver
     }
 
     /**
-     * Walk the sitemap index rather than the category pages: it is one request
-     * per 10,000 products and their robots.txt disallows the filtered lists.
+     * Walk the book categories, not the sitemap.
      *
-     * Everything they sell is yielded, not only books. fetch() returns null for
-     * anything without book fields, which is cheaper than guessing from a URL.
+     * The sitemap lists all ~50,000 goods with nothing in a URL to say which
+     * are books, so crawling it means fetching watch straps to find novels.
+     * The category pages under /product/knigi are server rendered and paginated,
+     * and their robots.txt allows both. The category sitemap is used only to
+     * tell a product link apart from a category link, since both are
+     * /product/{slug}.
      *
      * @return Generator<int, string>
      */
     public function discover(): Generator
     {
-        $index = $this->fetcher->get(self::SITEMAP_INDEX);
+        $categories = $this->categoryPaths();
+        $bookCategories = array_values(array_filter(
+            $categories,
+            static fn (string $path): bool => str_starts_with($path, self::BOOK_CATEGORY_PREFIX),
+        ));
 
-        foreach ($this->locations($index->body) as $sitemap) {
-            if (preg_match(self::SITEMAP_PRODUCTS_PATTERN, $sitemap) !== 1) {
-                continue;
-            }
+        $categoryLookup = array_flip($categories);
+        $seen = [];
 
-            $goods = $this->fetcher->get($sitemap);
+        foreach ($bookCategories as $category) {
+            for ($page = 1; $page <= self::MAX_CATEGORY_PAGES; $page++) {
+                $url = self::BASE_URL.$category.($page > 1 ? '?page='.$page : '');
+                $html = $this->fetcher->get($url)->body;
 
-            foreach ($this->locations($goods->body) as $url) {
-                // The site publishes /ru/product/... duplicates of every page.
-                if (str_contains($url, '/product/') && ! str_contains($url, '/ru/')) {
-                    yield $url;
+                $fresh = [];
+
+                foreach ($this->productPaths($html) as $path) {
+                    if (isset($categoryLookup[$path]) || isset($seen[$path])) {
+                        continue;
+                    }
+
+                    $seen[$path] = true;
+                    $fresh[] = $path;
+                }
+
+                // A page that adds nothing means the category is exhausted, or
+                // their pagination is ignoring us. Either way, move on.
+                if ($fresh === []) {
+                    break;
+                }
+
+                foreach ($fresh as $path) {
+                    yield self::BASE_URL.$path;
                 }
             }
         }
+    }
+
+    /**
+     * Every category path the site publishes, so a category link is never
+     * mistaken for a product.
+     *
+     * @return array<int, string>
+     */
+    private function categoryPaths(): array
+    {
+        $xml = $this->fetcher->get(self::SITEMAP_CATEGORIES)->body;
+
+        $paths = [];
+
+        foreach ($this->locations($xml) as $url) {
+            $path = parse_url($url, PHP_URL_PATH);
+
+            // The site publishes a /ru/ mirror of every page.
+            if (is_string($path) && ! str_starts_with($path, '/ru/')) {
+                $paths[] = rtrim($path, '/');
+            }
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function productPaths(string $html): array
+    {
+        preg_match_all(self::PRODUCT_LINK_PATTERN, $html, $matches);
+
+        return array_values(array_unique($matches[1]));
     }
 
     public function fetch(string $url): ?RawBook

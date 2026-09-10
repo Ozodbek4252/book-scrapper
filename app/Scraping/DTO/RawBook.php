@@ -36,4 +36,58 @@ final readonly class RawBook
         public ?bool $inStock = null,
         public array $payload = [],
     ) {}
+
+    /**
+     * Stored verbatim on book_sources.raw_payload and kept forever, so the
+     * canonical record can be rebuilt after a normalization change without
+     * scraping anything again.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'source_key' => $this->sourceKey,
+            'url' => $this->url,
+            'external_id' => $this->externalId,
+            'title' => $this->title,
+            'subtitle' => $this->subtitle,
+            'authors' => $this->authors,
+            'publisher' => $this->publisher,
+            'isbn' => $this->isbn,
+            'published_year' => $this->publishedYear,
+            'pages' => $this->pages,
+            'language' => $this->language,
+            'description' => $this->description,
+            'cover_url' => $this->coverUrl,
+            'price' => $this->price,
+            'in_stock' => $this->inStock,
+            'payload' => $this->payload,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            sourceKey: (string) ($data['source_key'] ?? ''),
+            url: (string) ($data['url'] ?? ''),
+            externalId: $data['external_id'] ?? null,
+            title: $data['title'] ?? null,
+            subtitle: $data['subtitle'] ?? null,
+            authors: $data['authors'] ?? [],
+            publisher: $data['publisher'] ?? null,
+            isbn: $data['isbn'] ?? null,
+            publishedYear: $data['published_year'] ?? null,
+            pages: $data['pages'] ?? null,
+            language: $data['language'] ?? null,
+            description: $data['description'] ?? null,
+            coverUrl: $data['cover_url'] ?? null,
+            price: $data['price'] ?? null,
+            inStock: $data['in_stock'] ?? null,
+            payload: $data['payload'] ?? [],
+        );
+    }
 }

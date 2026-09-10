@@ -82,6 +82,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | How much one run crawls
+    |--------------------------------------------------------------------------
+    |
+    | A full catalogue is tens of thousands of pages, and at one request per
+    | second that is most of a day. A run stops after this many product pages
+    | so a manual run finishes while you are still watching it.
+    |
+    */
+
+    'max_pages_per_run' => (int) env('SCRAPING_MAX_PAGES_PER_RUN', 200),
+
+    /*
+    |--------------------------------------------------------------------------
     | Sources
     |--------------------------------------------------------------------------
     |
@@ -92,14 +105,6 @@ return [
     */
 
     'sources' => [
-
-        'kitob_uz' => [
-            'driver' => null,
-            'enabled' => false,
-            'base_url' => 'https://kitob.uz',
-            'rate_limit' => 1,
-            'trust_level' => TrustLevel::Bookstore,
-        ],
 
         'asaxiy_uz' => [
             'driver' => AsaxiyUzDriver::class,

@@ -24,9 +24,9 @@ class BookSourceFactory extends Factory
 
         return [
             'book_id' => Book::factory(),
-            'source_key' => 'kitob_uz',
+            'source_key' => 'asaxiy_uz',
             'external_id' => $externalId,
-            'url' => "https://kitob.uz/product/{$externalId}",
+            'url' => "https://asaxiy.uz/product/{$externalId}",
             'raw_payload' => ['id' => $externalId, 'title' => fake()->sentence(3)],
             'price' => fake()->randomFloat(2, 15000, 250000),
             'in_stock' => fake()->boolean(80),
