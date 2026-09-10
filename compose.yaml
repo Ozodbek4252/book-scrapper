@@ -1,0 +1,74 @@
+name: book-scraper
+
+# Shared definition for every container that runs application PHP code.
+#
+# Note: .env is deliberately NOT passed through `env_file`. Real environment
+# variables win over phpunit.xml's <env> entries, which would silently break
+# `artisan test` inside the container. Laravel reads the bind-mounted .env
+# itself, and so does the entrypoint.
+x-app: &app
+  build:
+    context: .
+    target: dev
+    args:
+      UID: ${UID:-82}
+      GID: ${GID:-82}
+  # An explicit tag makes app, queue and scheduler share one build instead of
+  # each producing its own copy of the same image.
+  image: book-scraper-dev:latest
+  environment:
+    XDEBUG_MODE: ${XDEBUG_MODE:-off}
+    PHP_IDE_CONFIG: serverName=book-scraper
+  volumes:
+    - .:/var/www/html
+  extra_hosts:
+    - host.docker.internal:host-gateway
+
+services:
+  # php-fpm. Owns the schema: it is the only container that migrates.
+  app:
+    <<: *app
+    environment:
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}
+      PHP_IDE_CONFIG: serverName=book-scraper
+      RUN_MIGRATIONS: "true"
+
+  web:
+    image: nginx:stable-alpine
+    ports:
+      - "${APP_PORT:-8000}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - .:/var/www/html:ro
+    depends_on:
+      - app
+
+  # Vite dev server with hot module replacement.
+  vite:
+    image: node:22-alpine
+    working_dir: /app
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    environment:
+      DOCKER: "true"
+    volumes:
+      - .:/app
+      # Keep Linux-built node_modules out of the host tree.
+      - vite_node_modules:/app/node_modules
+    command: sh -c "[ -x node_modules/.bin/vite ] || npm ci; exec npm run dev"
+
+  # `queue:listen` reboots the framework per job, so code changes are picked up.
+  queue:
+    <<: *app
+    command: php artisan queue:listen --tries=1 --timeout=300
+    depends_on:
+      - app
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    depends_on:
+      - app
+
+volumes:
+  vite_node_modules:

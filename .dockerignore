@@ -1,0 +1,58 @@
+# Version control and editor state
+.git
+.gitattributes
+.gitignore
+.editorconfig
+.idea
+.vscode
+.zed
+.nova
+.phpactor.json
+
+# Dependencies are installed inside the image
+node_modules
+vendor
+
+# Build output is generated inside the image
+public/build
+public/hot
+public/storage
+public/fonts-manifest.dev.json
+
+# Local runtime state
+# bootstrap/cache is regenerated in the image; the host copy points at dev packages.
+bootstrap/cache/*
+storage/logs/*.log
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/pail
+storage/*.key
+database/*.sqlite
+.phpunit.result.cache
+.phpunit.cache
+
+# Secrets never belong in an image
+.env
+.env.*
+!.env.example
+auth.json
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+compose.yaml
+compose.prod.yaml
+
+# Test suite is not needed in the runtime image
+tests
+phpunit.xml
+
+# Docs and agent config
+*.md
+.ai
+.claude
+.codex
+.cursor
+boost.json
+AGENTS.md

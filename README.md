@@ -41,6 +41,61 @@ php artisan boost:install
 
 Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
 
+## Running with Docker
+
+### Local development
+
+```bash
+cp .env.example .env      # only the first time
+docker compose up -d --build
+```
+
+The app is served at http://localhost:8000 and Vite runs at http://localhost:5173
+with hot module replacement. The first start creates `.env`'s app key, the
+SQLite file and the database schema for you.
+
+The stack runs five containers:
+
+| Service     | What it does                                       |
+| ----------- | -------------------------------------------------- |
+| `app`       | php-fpm, and the only container that runs migrations |
+| `web`       | nginx on port 8000                                  |
+| `vite`      | Vite dev server on port 5173                        |
+| `queue`     | `queue:listen`, so job code changes are picked up   |
+| `scheduler` | `schedule:work`                                     |
+
+Run commands inside the containers:
+
+```bash
+docker compose exec app php artisan migrate
+docker compose exec app php artisan test
+docker compose exec app composer install
+docker compose exec vite npm install <package>
+```
+
+Useful overrides:
+
+- `APP_PORT` / `VITE_PORT` change the published ports.
+- `XDEBUG_MODE=debug docker compose up -d app` turns Xdebug on; it is off by default.
+- On Linux, set `UID` and `GID` to your own ids before building so bind-mounted
+  files stay writable: `UID=$(id -u) GID=$(id -g) docker compose up -d --build`.
+
+### Production
+
+```bash
+docker compose -f compose.prod.yaml up -d --build
+```
+
+This builds a self-contained image: PHP dependencies without dev packages, the
+Vite build output, and the config, route and view caches warmed on boot. Source
+files are baked in, not mounted.
+
+`APP_KEY` must be set in the environment or in `.env`, or the stack refuses to
+start. Application state lives in a named `storage` volume, including the SQLite
+file at `/var/www/html/storage/database.sqlite`. To use MySQL or PostgreSQL
+instead, set `DB_CONNECTION` and the related variables; both drivers are already
+installed in the image.
+
 ## Contributing
 
 Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
