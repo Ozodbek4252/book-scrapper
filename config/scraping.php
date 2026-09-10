@@ -47,6 +47,8 @@ return [
     'respect_robots' => env('SCRAPING_RESPECT_ROBOTS', true),
     'robots_cache_ttl' => (int) env('SCRAPING_ROBOTS_CACHE_TTL', 86400),
     'timeout' => (int) env('SCRAPING_TIMEOUT', 20),
+    // Seconds a worker waits for its turn on a domain before giving up.
+    'lock_wait' => (int) env('SCRAPING_LOCK_WAIT', 60),
     'retries' => (int) env('SCRAPING_RETRIES', 3),
 
     /*
