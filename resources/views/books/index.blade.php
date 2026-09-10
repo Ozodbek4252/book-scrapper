@@ -31,7 +31,10 @@
 
     <x-card>
         @if ($books->isEmpty())
-            <x-empty-state :message="$search !== '' ? "Nothing matches “{$search}”." : 'No books yet. Seed some with: php artisan db:seed'" />
+            @php($emptyMessage = $search !== ''
+                ? "Nothing matches “{$search}”."
+                : 'No books yet. Run a source, or load demo data with: php artisan db:seed --class=CatalogueSeeder')
+            <x-empty-state :message="$emptyMessage" />
         @else
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">

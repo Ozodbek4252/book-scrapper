@@ -13,4 +13,5 @@ Route::get('/books', [BookController::class, 'index'])->name('books.index');
 Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
 
 Route::get('/scrape-runs', [ScrapeRunController::class, 'index'])->name('scrape-runs.index');
+Route::post('/scrape-runs', [ScrapeRunController::class, 'store'])->name('scrape-runs.store');
 Route::get('/scrape-runs/{scrapeRun}', [ScrapeRunController::class, 'show'])->name('scrape-runs.show');

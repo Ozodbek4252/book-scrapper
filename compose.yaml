@@ -111,7 +111,7 @@ services:
     # `queue:listen` reboots the framework per job, so code changes are picked up.
     queue:
         <<: *app
-        command: php artisan queue:listen --tries=1 --timeout=300
+        command: php artisan queue:listen --queue=scraping,default --tries=1 --timeout=300
         depends_on:
             mysql:
                 condition: service_healthy

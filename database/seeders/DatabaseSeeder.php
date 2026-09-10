@@ -24,6 +24,8 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        $this->call(CatalogueSeeder::class);
+        // CatalogueSeeder is demo data. Run it deliberately when you want a
+        // populated UI: php artisan db:seed --class=CatalogueSeeder
+        // $this->call(CatalogueSeeder::class);
     }
 }

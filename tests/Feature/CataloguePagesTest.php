@@ -80,6 +80,14 @@ class CataloguePagesTest extends TestCase
             ->assertDontSee('Already checked');
     }
 
+    public function test_the_empty_book_list_renders_its_message_cleanly(): void
+    {
+        // A truncated message means the Blade attribute quoting broke again.
+        $this->get(route('books.index'))
+            ->assertOk()
+            ->assertSee('No books yet. Run a source, or load demo data with: php artisan db:seed --class=CatalogueSeeder');
+    }
+
     public function test_the_book_list_says_so_when_a_search_matches_nothing(): void
     {
         Book::factory()->create();

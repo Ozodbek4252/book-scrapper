@@ -2,9 +2,28 @@
     <x-slot:heading>Scrape runs</x-slot:heading>
     <x-slot:subheading>Every catalogue walk, newest first.</x-slot:subheading>
 
+    <x-slot:actions>
+        <form method="POST" action="{{ route('scrape-runs.store') }}" class="flex flex-wrap items-center gap-2">
+            @csrf
+            <label for="source_key" class="sr-only">Source</label>
+            <select
+                id="source_key"
+                name="source_key"
+                class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
+            >
+                @foreach ($sourceKeys as $key)
+                    <option value="{{ $key }}">{{ $key }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300">
+                Run now
+            </button>
+        </form>
+    </x-slot:actions>
+
     <x-card>
         @if ($runs->isEmpty())
-            <x-empty-state message="No scrape has run yet. Drivers arrive in step 4." />
+            <x-empty-state message="No scrape has run yet. Pick a source above and press Run now." />
         @else
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
