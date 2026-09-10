@@ -13,6 +13,7 @@ class BookController extends Controller
     public function index(Request $request): View
     {
         $search = $request->string('q')->trim()->value();
+        $view = $request->string('view')->value() === 'grid' ? 'grid' : 'list';
 
         $books = Book::query()
             ->with(['publisher:id,name', 'authors:id,full_name'])
@@ -35,6 +36,7 @@ class BookController extends Controller
         return view('books.index', [
             'books' => $books,
             'search' => $search,
+            'view' => $view,
         ]);
     }
 
