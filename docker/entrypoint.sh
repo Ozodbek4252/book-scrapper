@@ -58,19 +58,6 @@ mkdir -p \
     storage/logs
 chown -R "$APP_USER:$APP_USER" storage bootstrap/cache
 
-# SQLite needs the file to exist before the first connection.
-if [ "$(setting DB_CONNECTION sqlite)" = "sqlite" ]; then
-    DB_FILE=$(setting DB_DATABASE "$APP_ROOT/database/database.sqlite")
-    if [ "$DB_FILE" != ":memory:" ]; then
-        mkdir -p "$(dirname "$DB_FILE")"
-        if [ ! -f "$DB_FILE" ]; then
-            log "creating SQLite database at $DB_FILE"
-            : > "$DB_FILE"
-        fi
-        chown "$APP_USER:$APP_USER" "$DB_FILE"
-    fi
-fi
-
 if [ -z "$(setting APP_KEY '')" ]; then
     if [ -f .env ]; then
         log "generating APP_KEY"
@@ -78,6 +65,29 @@ if [ -z "$(setting APP_KEY '')" ]; then
     else
         log "WARNING: APP_KEY is not set and there is no .env file"
     fi
+fi
+
+# Compose already gates startup on the MySQL healthcheck, but this also covers
+# `docker run` and a database that restarts under a running app.
+wait_for_database() {
+    _attempt=1
+    _max=30
+
+    while ! artisan db:show --quiet >/dev/null 2>&1; do
+        if [ "$_attempt" -ge "$_max" ]; then
+            log "database still unreachable after $_max attempts, giving up"
+            return 1
+        fi
+        if [ "$_attempt" = 1 ]; then
+            log "waiting for the database"
+        fi
+        _attempt=$((_attempt + 1))
+        sleep 2
+    done
+}
+
+if [ "$(setting DB_CONNECTION mysql)" != "sqlite" ]; then
+    wait_for_database
 fi
 
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then

@@ -51,18 +51,20 @@ docker compose up -d --build
 ```
 
 The app is served at http://localhost:8000 and Vite runs at http://localhost:5173
-with hot module replacement. The first start creates `.env`'s app key, the
-SQLite file and the database schema for you.
+with hot module replacement. The first start waits for MySQL, then creates
+`.env`'s app key and the database schema for you.
 
-The stack runs five containers:
+The stack runs seven containers:
 
-| Service     | What it does                                       |
-| ----------- | -------------------------------------------------- |
+| Service     | What it does                                         |
+| ----------- | ---------------------------------------------------- |
 | `app`       | php-fpm, and the only container that runs migrations |
-| `web`       | nginx on port 8000                                  |
-| `vite`      | Vite dev server on port 5173                        |
-| `queue`     | `queue:listen`, so job code changes are picked up   |
-| `scheduler` | `schedule:work`                                     |
+| `web`       | nginx on port 8000                                   |
+| `mysql`     | MySQL 8.4 on port 3306, stored in a named volume     |
+| `vite`      | Vite dev server on port 5173                         |
+| `adminer`   | Database browser on port 8080                        |
+| `queue`     | `queue:listen`, so job code changes are picked up    |
+| `scheduler` | `schedule:work`                                      |
 
 Run commands inside the containers:
 
@@ -73,9 +75,21 @@ docker compose exec app composer install
 docker compose exec vite npm install <package>
 ```
 
+### Browsing the database
+
+Adminer is at http://localhost:8080. The server field is already filled in with
+`mysql`; sign in with the `DB_USERNAME`, `DB_PASSWORD` and `DB_DATABASE` values
+from `.env` (`book_scraper` / `secret` / `book_scraper` by default).
+
+MySQL is also published on port 3306, so a desktop client can connect to
+`127.0.0.1` with the same credentials. Change the published port with
+`FORWARD_DB_PORT` if 3306 is already taken on your machine.
+
+Adminer is a development tool and is deliberately not part of `compose.prod.yaml`.
+
 Useful overrides:
 
-- `APP_PORT` / `VITE_PORT` change the published ports.
+- `APP_PORT`, `VITE_PORT` and `ADMINER_PORT` change the published ports.
 - `XDEBUG_MODE=debug docker compose up -d app` turns Xdebug on; it is off by default.
 - On Linux, set `UID` and `GID` to your own ids before building so bind-mounted
   files stay writable: `UID=$(id -u) GID=$(id -g) docker compose up -d --build`.
@@ -90,11 +104,10 @@ This builds a self-contained image: PHP dependencies without dev packages, the
 Vite build output, and the config, route and view caches warmed on boot. Source
 files are baked in, not mounted.
 
-`APP_KEY` must be set in the environment or in `.env`, or the stack refuses to
-start. Application state lives in a named `storage` volume, including the SQLite
-file at `/var/www/html/storage/database.sqlite`. To use MySQL or PostgreSQL
-instead, set `DB_CONNECTION` and the related variables; both drivers are already
-installed in the image.
+`APP_KEY`, `DB_PASSWORD` and `DB_ROOT_PASSWORD` must be set in the environment
+or in `.env`, or the stack refuses to start. MySQL data lives in a `mysql_data`
+volume and the application's own files in a `storage` volume. To use a database
+server you already run, point `DB_HOST` at it and drop the `mysql` service.
 
 ## Contributing
 

@@ -7,68 +7,119 @@ name: book-scraper
 # `artisan test` inside the container. Laravel reads the bind-mounted .env
 # itself, and so does the entrypoint.
 x-app: &app
-  build:
-    context: .
-    target: dev
-    args:
-      UID: ${UID:-82}
-      GID: ${GID:-82}
-  # An explicit tag makes app, queue and scheduler share one build instead of
-  # each producing its own copy of the same image.
-  image: book-scraper-dev:latest
-  environment:
-    XDEBUG_MODE: ${XDEBUG_MODE:-off}
-    PHP_IDE_CONFIG: serverName=book-scraper
-  volumes:
-    - .:/var/www/html
-  extra_hosts:
-    - host.docker.internal:host-gateway
+    build:
+        context: .
+        target: dev
+        args:
+            UID: ${UID:-82}
+            GID: ${GID:-82}
+    # An explicit tag makes app, queue and scheduler share one build instead of
+    # each producing its own copy of the same image.
+    image: book-scraper-dev:latest
+    environment:
+        XDEBUG_MODE: ${XDEBUG_MODE:-off}
+        PHP_IDE_CONFIG: serverName=book-scraper
+    volumes:
+        - .:/var/www/html
+    extra_hosts:
+        - host.docker.internal:host-gateway
+    depends_on:
+        mysql:
+            condition: service_healthy
 
 services:
-  # php-fpm. Owns the schema: it is the only container that migrates.
-  app:
-    <<: *app
-    environment:
-      XDEBUG_MODE: ${XDEBUG_MODE:-off}
-      PHP_IDE_CONFIG: serverName=book-scraper
-      RUN_MIGRATIONS: "true"
+    # php-fpm. Owns the schema: it is the only container that migrates.
+    app:
+        <<: *app
+        environment:
+            XDEBUG_MODE: ${XDEBUG_MODE:-off}
+            PHP_IDE_CONFIG: serverName=book-scraper
+            RUN_MIGRATIONS: "true"
 
-  web:
-    image: nginx:stable-alpine
-    ports:
-      - "${APP_PORT:-8000}:80"
-    volumes:
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - .:/var/www/html:ro
-    depends_on:
-      - app
+    web:
+        image: nginx:stable-alpine
+        ports:
+            - "${APP_PORT:-8000}:80"
+        volumes:
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+            - .:/var/www/html:ro
+        depends_on:
+            - app
 
-  # Vite dev server with hot module replacement.
-  vite:
-    image: node:22-alpine
-    working_dir: /app
-    ports:
-      - "${VITE_PORT:-5173}:5173"
-    environment:
-      DOCKER: "true"
-    volumes:
-      - .:/app
-      # Keep Linux-built node_modules out of the host tree.
-      - vite_node_modules:/app/node_modules
-    command: sh -c "[ -x node_modules/.bin/vite ] || npm ci; exec npm run dev"
+    mysql:
+        image: mysql:8.4
+        ports:
+            - "${FORWARD_DB_PORT:-3306}:3306"
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE:-book_scraper}
+            MYSQL_USER: ${DB_USERNAME:-book_scraper}
+            MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+        volumes:
+            - mysql_data:/var/lib/mysql
+        healthcheck:
+            # Networking is off while the image initialises, so a TCP ping only
+            # succeeds once the database is genuinely ready to accept connections.
+            test:
+                [
+                    "CMD",
+                    "mysqladmin",
+                    "ping",
+                    "-h",
+                    "127.0.0.1",
+                    "-uroot",
+                    "-p${DB_ROOT_PASSWORD:-root}",
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 20
+            start_period: 30s
 
-  # `queue:listen` reboots the framework per job, so code changes are picked up.
-  queue:
-    <<: *app
-    command: php artisan queue:listen --tries=1 --timeout=300
-    depends_on:
-      - app
+    # Vite dev server with hot module replacement.
+    vite:
+        image: node:22-alpine
+        working_dir: /app
+        ports:
+            - "${VITE_PORT:-5173}:5173"
+        environment:
+            DOCKER: "true"
+        volumes:
+            - .:/app
+            # Keep Linux-built node_modules out of the host tree.
+            - vite_node_modules:/app/node_modules
+        command: sh -c "[ -x node_modules/.bin/vite ] || npm ci; exec npm run dev"
 
-  scheduler:
-    <<: *app
-    command: php artisan schedule:work
-    depends_on:
-      - app
+    # Database browser. Dev only: it is deliberately absent from compose.prod.yaml.
+    adminer:
+        image: adminer:5
+        ports:
+            - "${ADMINER_PORT:-8080}:8080"
+        environment:
+            ADMINER_DEFAULT_SERVER: mysql
+            ADMINER_DESIGN: dracula
+        depends_on:
+            mysql:
+                condition: service_healthy
+
+    # `queue:listen` reboots the framework per job, so code changes are picked up.
+    queue:
+        <<: *app
+        command: php artisan queue:listen --tries=1 --timeout=300
+        depends_on:
+            mysql:
+                condition: service_healthy
+            app:
+                condition: service_started
+
+    scheduler:
+        <<: *app
+        command: php artisan schedule:work
+        depends_on:
+            mysql:
+                condition: service_healthy
+            app:
+                condition: service_started
 
 volumes:
-  vite_node_modules:
+    mysql_data:
+    vite_node_modules:

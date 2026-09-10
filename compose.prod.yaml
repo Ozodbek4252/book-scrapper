@@ -15,14 +15,21 @@ x-app: &app
     APP_URL: ${APP_URL:-http://localhost}
     LOG_CHANNEL: stderr
     LOG_LEVEL: ${LOG_LEVEL:-warning}
-    # Keep the SQLite file on the persistent volume, not in the image.
-    DB_CONNECTION: ${DB_CONNECTION:-sqlite}
-    DB_DATABASE: ${DB_DATABASE:-/var/www/html/storage/database.sqlite}
+    # Point DB_HOST at an external server to drop the mysql service below.
+    DB_CONNECTION: ${DB_CONNECTION:-mysql}
+    DB_HOST: ${DB_HOST:-mysql}
+    DB_PORT: ${DB_PORT:-3306}
+    DB_DATABASE: ${DB_DATABASE:-book_scraper}
+    DB_USERNAME: ${DB_USERNAME:-book_scraper}
+    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set for the production stack}
     CACHE_STORE: database
     SESSION_DRIVER: database
     QUEUE_CONNECTION: database
   volumes:
     - storage:/var/www/html/storage
+  depends_on:
+    mysql:
+      condition: service_healthy
 
 services:
   app:
@@ -46,12 +53,31 @@ services:
       app:
         condition: service_healthy
 
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-book_scraper}
+      MYSQL_USER: ${DB_USERNAME:-book_scraper}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set for the production stack}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set for the production stack}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
   queue:
     <<: *app
     command: php artisan queue:work --tries=3 --max-time=3600 --sleep=1
     healthcheck:
       disable: true
     depends_on:
+      mysql:
+        condition: service_healthy
       app:
         condition: service_healthy
 
@@ -61,8 +87,11 @@ services:
     healthcheck:
       disable: true
     depends_on:
+      mysql:
+        condition: service_healthy
       app:
         condition: service_healthy
 
 volumes:
+  mysql_data:
   storage:
