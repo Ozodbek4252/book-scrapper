@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\Book;
-use App\Models\Publisher;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
+
+use function App\Support\book_fingerprint;
+use function App\Support\normalize_title;
+use App\Models\Publisher;
+use App\Models\Book;
 
 /**
  * @extends Factory<Book>
@@ -44,7 +46,7 @@ class BookFactory extends Factory
             'title' => $latin,
             'title_latin' => $latin,
             'title_cyrillic' => $cyrillic,
-            'title_normalized' => Str::squish(Str::lower($latin)),
+            'title_normalized' => normalize_title($latin),
             'subtitle' => null,
             'publisher_id' => Publisher::factory(),
             'published_year' => fake()->numberBetween(1990, 2025),
@@ -65,11 +67,20 @@ class BookFactory extends Factory
      */
     public function withoutIsbn(): static
     {
-        return $this->state(fn (array $attributes): array => [
-            'isbn13' => null,
-            'isbn10' => null,
-            'fingerprint' => sha1(Str::random(40)),
-        ]);
+        return $this->state(function (array $attributes): array {
+            // The unique suffix keeps bulk creation from colliding on the
+            // fingerprint, which is what two books with one title and one year
+            // are supposed to do.
+            $title = $attributes['title'].' '.fake()->unique()->numberBetween(1, 99999);
+
+            return [
+                'isbn13' => null,
+                'isbn10' => null,
+                'title' => $title,
+                'title_normalized' => normalize_title($title),
+                'fingerprint' => book_fingerprint($title, null, $attributes['published_year'] ?? null),
+            ];
+        });
     }
 
     public function verified(): static

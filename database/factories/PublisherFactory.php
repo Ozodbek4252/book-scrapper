@@ -6,7 +6,8 @@ namespace Database\Factories;
 
 use App\Models\Publisher;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
+
+use function App\Support\normalize_title;
 
 /**
  * @extends Factory<Publisher>
@@ -40,7 +41,7 @@ class PublisherFactory extends Factory
             'name' => $latin,
             'name_latin' => $latin,
             'name_cyrillic' => $cyrillic,
-            'name_normalized' => Str::squish(Str::lower($latin)),
+            'name_normalized' => normalize_title($latin),
             'website' => fake()->optional()->url(),
         ];
     }
