@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Laravel\Scout\Searchable;
 
 #[Fillable([
     'isbn13',
@@ -34,7 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Book extends Model
 {
     /** @use HasFactory<BookFactory> */
-    use HasFactory;
+    use HasFactory, Searchable;
 
     /**
      * @return BelongsTo<Publisher, $this>
@@ -60,6 +61,38 @@ class Book extends Model
     public function sources(): HasMany
     {
         return $this->hasMany(BookSource::class);
+    }
+
+    /**
+     * What the search index holds.
+     *
+     * Both alphabets go in for titles and authors: someone searching
+     * "Ўткан кунлар" has to find a book listed as "Oʻtkan kunlar", and the
+     * other way round. The normalized forms are indexed too, so an apostrophe
+     * typed any of six ways still matches.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSearchableArray(): array
+    {
+        $this->loadMissing(['authors', 'publisher']);
+
+        return [
+            'id' => $this->id,
+            'isbn13' => $this->isbn13,
+            'isbn10' => $this->isbn10,
+            'title' => $this->title,
+            'title_latin' => $this->title_latin,
+            'title_cyrillic' => $this->title_cyrillic,
+            'title_normalized' => $this->title_normalized,
+            'authors' => $this->authors->pluck('full_name')->all(),
+            'authors_latin' => $this->authors->pluck('full_name_latin')->filter()->values()->all(),
+            'authors_cyrillic' => $this->authors->pluck('full_name_cyrillic')->filter()->values()->all(),
+            'authors_normalized' => $this->authors->pluck('full_name_normalized')->all(),
+            'publisher' => $this->publisher?->name,
+            'published_year' => $this->published_year,
+            'verified' => $this->verified,
+        ];
     }
 
     /**

@@ -94,6 +94,11 @@ return [
 
     'max_pages_per_run' => (int) env('SCRAPING_MAX_PAGES_PER_RUN', 200),
 
+    /**
+     * Requests per minute per API token.
+     */
+    'api_rate_limit' => (int) env('API_RATE_LIMIT', 60),
+
     /*
     |--------------------------------------------------------------------------
     | Sources
@@ -106,6 +111,16 @@ return [
     */
 
     'sources' => [
+
+        // Not scraped. Books sent in by mobile app users land here, trusted
+        // least, so any real source outranks them field by field.
+        'user_submission' => [
+            'driver' => null,
+            'enabled' => false,
+            'base_url' => null,
+            'rate_limit' => 1,
+            'trust_level' => TrustLevel::UserSubmission,
+        ],
 
         'asaxiy_uz' => [
             'driver' => AsaxiyUzDriver::class,

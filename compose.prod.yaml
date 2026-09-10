@@ -22,6 +22,10 @@ x-app: &app
     DB_DATABASE: ${DB_DATABASE:-book_scraper}
     DB_USERNAME: ${DB_USERNAME:-book_scraper}
     DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set for the production stack}
+    SCOUT_DRIVER: ${SCOUT_DRIVER:-meilisearch}
+    SCOUT_QUEUE: "true"
+    MEILISEARCH_HOST: ${MEILISEARCH_HOST:-http://meilisearch:7700}
+    MEILISEARCH_KEY: ${MEILISEARCH_KEY:?MEILISEARCH_KEY must be set for the production stack}
     CACHE_STORE: database
     SESSION_DRIVER: database
     QUEUE_CONNECTION: database
@@ -70,6 +74,16 @@ services:
       retries: 10
       start_period: 60s
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_KEY:?MEILISEARCH_KEY must be set for the production stack}
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_ENV: production
+    volumes:
+      - meilisearch_data:/meili_data
+
   queue:
     <<: *app
     command: php artisan queue:work --queue=scraping,default --tries=3 --timeout=1800 --max-time=3600 --sleep=1
@@ -93,5 +107,6 @@ services:
         condition: service_healthy
 
 volumes:
+  meilisearch_data:
   mysql_data:
   storage:

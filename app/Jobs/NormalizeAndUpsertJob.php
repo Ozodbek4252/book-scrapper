@@ -33,7 +33,7 @@ class NormalizeAndUpsertJob implements ShouldQueue
     public function __construct(
         public readonly string $sourceKey,
         public readonly array $raw,
-        public readonly int $runId,
+        public readonly ?int $runId = null,
     ) {}
 
     public function handle(SourceRegistry $registry, UpsertBookFromSource $upsert): void
@@ -43,12 +43,18 @@ class NormalizeAndUpsertJob implements ShouldQueue
             $registry->trustLevel($this->sourceKey),
         );
 
-        ScrapeRun::whereKey($this->runId)
-            ->increment($result['created'] ? 'items_new' : 'items_updated');
+        if ($this->runId !== null) {
+            ScrapeRun::whereKey($this->runId)
+                ->increment($result['created'] ? 'items_new' : 'items_updated');
+        }
     }
 
     public function failed(?Throwable $exception): void
     {
+        if ($this->runId === null) {
+            return;
+        }
+
         ScrapeError::create([
             'run_id' => $this->runId,
             'url' => $this->raw['url'] ?? null,

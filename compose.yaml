@@ -95,6 +95,25 @@ services:
             - vite_node_modules:/app/node_modules
         command: sh -c "[ -x node_modules/.bin/vite ] || npm ci; exec npm run dev"
 
+    # Typo-tolerant search for the API. Indexes both alphabets.
+    meilisearch:
+        image: getmeili/meilisearch:v1.11
+        restart: unless-stopped
+        ports:
+            - "${FORWARD_MEILISEARCH_PORT:-7700}:7700"
+        environment:
+            MEILI_MASTER_KEY: ${MEILISEARCH_KEY:-masterKeyForLocalDevelopmentOnly}
+            MEILI_NO_ANALYTICS: "true"
+            MEILI_ENV: development
+        volumes:
+            - meilisearch_data:/meili_data
+        healthcheck:
+            test: ["CMD", "meilisearch", "--help"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 15s
+
     # Database browser. Dev only: it is deliberately absent from compose.prod.yaml.
     adminer:
         image: adminer:5
@@ -128,5 +147,6 @@ services:
                 condition: service_started
 
 volumes:
+    meilisearch_data:
     mysql_data:
     vite_node_modules:
