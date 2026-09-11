@@ -34,6 +34,21 @@ final readonly class SourceRegistry
     }
 
     /**
+     * Sources a run can actually be started for right now: a driver is
+     * written and its own switch is on. Everything else — no driver yet,
+     * or a written driver switched off — would only fail once dispatched.
+     *
+     * @return array<int, string>
+     */
+    public function runnableKeys(): array
+    {
+        return array_values(array_filter(
+            $this->keys(),
+            fn (string $key): bool => $this->hasDriver($key) && $this->isEnabled($key),
+        ));
+    }
+
+    /**
      * Scraping can be switched off globally without a deploy.
      */
     public function scrapingEnabled(): bool

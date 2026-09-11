@@ -88,6 +88,17 @@ class SourceRegistryTest extends TestCase
         $this->assertNull($this->registry()->driverFor('user_submission'));
     }
 
+    public function test_runnable_keys_excludes_no_driver_and_disabled_sources(): void
+    {
+        config(['scraping.sources' => [
+            'ready' => ['driver' => AsaxiyUzDriver::class, 'enabled' => true],
+            'written_but_off' => ['driver' => AsaxiyUzDriver::class, 'enabled' => false],
+            'no_driver_yet' => ['driver' => null, 'enabled' => false],
+        ]]);
+
+        $this->assertSame(['ready'], $this->registry()->runnableKeys());
+    }
+
     private function registry(): SourceRegistry
     {
         return app(SourceRegistry::class);

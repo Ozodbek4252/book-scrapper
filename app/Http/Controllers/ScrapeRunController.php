@@ -20,14 +20,14 @@ class ScrapeRunController extends Controller
             'runs' => ScrapeRun::query()
                 ->latest('id')
                 ->paginate(20),
-            'sourceKeys' => $registry->keys(),
+            'sourceKeys' => $registry->runnableKeys(),
         ]);
     }
 
     public function store(Request $request, SourceRegistry $registry, StartScrapeRun $startRun): RedirectResponse
     {
         $validated = $request->validate([
-            'source_key' => ['required', 'string', Rule::in($registry->keys())],
+            'source_key' => ['required', 'string', Rule::in($registry->runnableKeys())],
         ]);
 
         $run = $startRun->handle($validated['source_key']);

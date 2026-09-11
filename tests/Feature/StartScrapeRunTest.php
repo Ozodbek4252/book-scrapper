@@ -7,6 +7,8 @@ namespace Tests\Feature;
 use App\Enums\ScrapeRunStatus;
 use App\Jobs\DiscoverSourceJob;
 use App\Models\ScrapeRun;
+use App\Scraping\Drivers\AsaxiyUzDriver;
+use App\Scraping\Drivers\OlchaUzDriver;
 use App\Scraping\StartScrapeRun;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -69,12 +71,42 @@ class StartScrapeRunTest extends TestCase
         $this->post(route('scrape-runs.store'), [])->assertSessionHasErrors('source_key');
     }
 
-    public function test_the_run_list_offers_every_configured_source(): void
+    public function test_it_refuses_a_source_that_is_disabled(): void
     {
+        Queue::fake();
+        config(['scraping.sources.olcha_uz.enabled' => false]);
+
+        $this->post(route('scrape-runs.store'), ['source_key' => 'olcha_uz'])
+            ->assertSessionHasErrors('source_key');
+
+        $this->assertSame(0, ScrapeRun::count());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_it_refuses_a_source_with_no_driver(): void
+    {
+        Queue::fake();
+
+        $this->post(route('scrape-runs.store'), ['source_key' => 'user_submission'])
+            ->assertSessionHasErrors('source_key');
+
+        $this->assertSame(0, ScrapeRun::count());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_the_run_list_offers_only_sources_that_can_actually_run(): void
+    {
+        config(['scraping.sources' => [
+            'asaxiy_uz' => ['driver' => AsaxiyUzDriver::class, 'enabled' => true],
+            'olcha_uz' => ['driver' => OlchaUzDriver::class, 'enabled' => false],
+            'user_submission' => ['driver' => null, 'enabled' => false],
+        ]]);
+
         $this->get(route('scrape-runs.index'))
             ->assertOk()
             ->assertSee('Run now')
             ->assertSee('asaxiy_uz')
-            ->assertSee('olcha_uz');
+            ->assertDontSee('olcha_uz')
+            ->assertDontSee('user_submission');
     }
 }
