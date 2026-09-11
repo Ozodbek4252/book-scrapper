@@ -1,0 +1,19 @@
+name: book-scraper-adminer
+
+# Ad hoc DB browser for the production stack: `docker compose -f
+# compose.adminer.yml up -d`, then http://localhost:8080 (bound to
+# localhost only — on a remote host, reach it via an SSH tunnel, same as
+# the database itself; never bind this to a public interface).
+services:
+  adminer:
+    image: adminer:5
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - default
+
+networks:
+  default:
+    name: book-scraper-prod_default
+    external: true
