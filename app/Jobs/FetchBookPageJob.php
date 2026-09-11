@@ -74,18 +74,15 @@ class FetchBookPageJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $upsert = (new NormalizeAndUpsertJob($this->sourceKey, $raw->toArray(), $this->runId))
-            ->onQueue((string) config('scraping.queue_upserts'));
-
-        // Add it to this run's batch rather than dispatching alongside it, so
-        // the run is not reported finished while its books are still landing.
-        if ($this->batch() !== null) {
-            $this->batch()->add([$upsert]);
-
-            return;
-        }
-
-        dispatch($upsert);
+        // Dispatched on its own rather than added to this job's batch:
+        // Batch::add() bulk-inserts onto the *batch's* queue regardless of
+        // the job's own onQueue(), which silently put every upsert behind
+        // the entire remaining fetch queue instead of ahead of it. The run
+        // may now report finished a moment before its very last book lands.
+        dispatch(
+            (new NormalizeAndUpsertJob($this->sourceKey, $raw->toArray(), $this->runId))
+                ->onQueue((string) config('scraping.queue_upserts')),
+        );
     }
 
     public function failed(?Throwable $exception): void
