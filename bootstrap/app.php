@@ -15,7 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Caddy terminates TLS and nginx sits behind it, both on the private
+        // Docker network only the app itself can reach, so every hop up to
+        // php-fpm is trusted here — otherwise Laravel never learns the
+        // original request was HTTPS and generates http:// URLs.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
