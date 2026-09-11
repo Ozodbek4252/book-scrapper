@@ -51,7 +51,7 @@ class CatalogueSeeder extends Seeder
 
         Book::factory()->verified()->count(8)->recycle($publishers)->create();
 
-        foreach (['asaxiy_uz', 'asaxiy_uz', 'akademnashr'] as $sourceKey) {
+        foreach (['asaxiy_uz', 'asaxiy_uz', 'olcha_uz'] as $sourceKey) {
             ScrapeRun::factory()->completed()->create(['source_key' => $sourceKey]);
         }
 

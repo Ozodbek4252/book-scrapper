@@ -60,11 +60,12 @@ class SourceRegistryTest extends TestCase
 
     public function test_publisher_sites_outrank_bookstores(): void
     {
+        config(['scraping.sources.a_publisher' => ['driver' => null, 'enabled' => false, 'trust_level' => TrustLevel::Publisher]]);
         $registry = $this->registry();
 
         $this->assertSame(TrustLevel::Bookstore, $registry->trustLevel('asaxiy_uz'));
-        $this->assertSame(TrustLevel::Publisher, $registry->trustLevel('akademnashr'));
-        $this->assertTrue($registry->trustLevel('akademnashr')->outranks($registry->trustLevel('asaxiy_uz')));
+        $this->assertSame(TrustLevel::Publisher, $registry->trustLevel('a_publisher'));
+        $this->assertTrue($registry->trustLevel('a_publisher')->outranks($registry->trustLevel('asaxiy_uz')));
     }
 
     public function test_an_unknown_source_is_trusted_least(): void
@@ -84,7 +85,7 @@ class SourceRegistryTest extends TestCase
 
     public function test_it_returns_null_when_a_source_has_no_driver(): void
     {
-        $this->assertNull($this->registry()->driverFor('akademnashr'));
+        $this->assertNull($this->registry()->driverFor('user_submission'));
     }
 
     private function registry(): SourceRegistry

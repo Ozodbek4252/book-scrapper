@@ -75,6 +75,6 @@ class StartScrapeRunTest extends TestCase
             ->assertOk()
             ->assertSee('Run now')
             ->assertSee('asaxiy_uz')
-            ->assertSee('akademnashr');
+            ->assertSee('olcha_uz');
     }
 }

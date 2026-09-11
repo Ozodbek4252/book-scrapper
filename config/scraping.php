@@ -151,30 +151,6 @@ return [
             'trust_level' => TrustLevel::Bookstore,
         ],
 
-        'ozbekiston_nmiu' => [
-            'driver' => null,
-            'enabled' => false,
-            'base_url' => null,
-            'rate_limit' => 1,
-            'trust_level' => TrustLevel::Publisher,
-        ],
-
-        'yangi_asr_avlodi' => [
-            'driver' => null,
-            'enabled' => false,
-            'base_url' => null,
-            'rate_limit' => 1,
-            'trust_level' => TrustLevel::Publisher,
-        ],
-
-        'akademnashr' => [
-            'driver' => null,
-            'enabled' => false,
-            'base_url' => null,
-            'rate_limit' => 1,
-            'trust_level' => TrustLevel::Publisher,
-        ],
-
     ],
 
 ];

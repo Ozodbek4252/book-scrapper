@@ -87,10 +87,10 @@ class CatalogueStatisticsTest extends TestCase
     public function test_it_groups_books_by_source_busiest_first(): void
     {
         BookSource::factory()->count(3)->forSource('asaxiy_uz')->create();
-        BookSource::factory()->forSource('akademnashr')->create();
+        BookSource::factory()->forSource('olcha_uz')->create();
 
         $perSource = (new CatalogueStatistics)->booksPerSource();
 
-        $this->assertSame(['asaxiy_uz' => 3, 'akademnashr' => 1], $perSource->all());
+        $this->assertSame(['asaxiy_uz' => 3, 'olcha_uz' => 1], $perSource->all());
     }
 }
