@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Models\Author;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 use function App\Support\normalize_author_name;
-use App\Models\Author;
 
 /**
  * @extends Factory<Author>

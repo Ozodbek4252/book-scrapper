@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Models\Book;
+use App\Models\Publisher;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 use function App\Support\book_fingerprint;
 use function App\Support\normalize_title;
-use App\Models\Publisher;
-use App\Models\Book;
 
 /**
  * @extends Factory<Book>
