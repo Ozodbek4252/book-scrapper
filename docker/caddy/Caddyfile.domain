@@ -1,0 +1,10 @@
+{$APP_DOMAIN} {
+	reverse_proxy web:80
+}
+
+# Caddy's automatic HTTPS otherwise redirects *any* Host on :80 to https
+# using that same Host — including a bare IP, which can never get a
+# certificate. Serve those plainly instead of bouncing them into a dead end.
+:80 {
+	reverse_proxy web:80
+}

@@ -67,12 +67,21 @@ services:
       - "${APP_PORT:-80}:80"
       - "${APP_TLS_PORT:-443}:443"
     environment:
-      # ":80" (Caddy's syntax for "any host, plain HTTP") is the safe
-      # no-op default for stacks with no public hostname to get a
-      # certificate for — e.g. one only reached through a tunnel like ngrok.
-      APP_DOMAIN: ${APP_DOMAIN:-:80}
+      # Empty is the safe default for stacks with no public hostname to get
+      # a certificate for — e.g. one only reached through a tunnel like
+      # ngrok. Picks a plain-HTTP-only config instead (see entrypoint below).
+      APP_DOMAIN: ${APP_DOMAIN:-}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -n "$$APP_DOMAIN" ]; then
+          cp /etc/caddy/templates/Caddyfile.domain /etc/caddy/Caddyfile
+        else
+          cp /etc/caddy/templates/Caddyfile.plain /etc/caddy/Caddyfile
+        fi
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     volumes:
-      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy:/etc/caddy/templates:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
