@@ -29,6 +29,11 @@ x-app: &app
     CACHE_STORE: database
     SESSION_DRIVER: database
     QUEUE_CONNECTION: database
+    # Must stay above the longest job's own timeout (DiscoverSourceJob's is
+    # 1800s), or the queue thinks a still-running job was abandoned, retries
+    # it, and it immediately exceeds that job's tries=1 with
+    # MaxAttemptsExceededException — Laravel's own default here is 90s.
+    DB_QUEUE_RETRY_AFTER: ${DB_QUEUE_RETRY_AFTER:-2000}
     SCRAPING_MAX_PAGES_PER_RUN: ${SCRAPING_MAX_PAGES_PER_RUN:-200}
     SCRAPING_ASAXIY_ENABLED: ${SCRAPING_ASAXIY_ENABLED:-false}
     SCRAPING_OLCHA_ENABLED: ${SCRAPING_OLCHA_ENABLED:-false}
