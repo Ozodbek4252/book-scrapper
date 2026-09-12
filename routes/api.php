@@ -14,7 +14,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')
-    ->middleware(['auth:sanctum', 'throttle:api'])
+    ->middleware([
+        // 'auth:sanctum',
+        'throttle:api'
+    ])
     ->group(function (): void {
         Route::get('/books', [BookController::class, 'index'])->name('api.v1.books.index');
         Route::post('/books/suggestions', [BookSuggestionController::class, 'store'])->name('api.v1.books.suggestions.store');
