@@ -46,13 +46,32 @@ class BookApiTest extends TestCase
         return $book;
     }
 
-    public function test_the_api_is_closed_without_a_token(): void
+    /**
+     * The API is open: auth:sanctum is commented out in routes/api.php because
+     * the mobile app has no way to obtain a token yet. Rate limiting by address
+     * is therefore the only thing protecting it, and ApiRateLimitTest covers
+     * that. Put the middleware back and this test is what tells you.
+     */
+    public function test_reads_are_public(): void
     {
-        Book::factory()->create();
+        $this->book();
 
-        $this->getJson('/api/v1/books')->assertUnauthorized();
-        $this->getJson('/api/v1/books/9789943650190')->assertUnauthorized();
-        $this->postJson('/api/v1/books/suggestions', ['title' => 'Kitob'])->assertUnauthorized();
+        $this->getJson('/api/v1/books')->assertOk();
+        $this->getJson('/api/v1/books/9789943650190')->assertOk();
+    }
+
+    /**
+     * Writes are public too, which is the part worth thinking about: anyone can
+     * add a book. The merge keeps the damage bounded, since a submission lands
+     * unverified at the lowest trust level and cannot overwrite a scraped
+     * field, but it does create rows.
+     */
+    public function test_anyone_can_submit_a_book_while_the_api_is_open(): void
+    {
+        $this->postJson('/api/v1/books/suggestions', ['title' => 'Yangi kitob'])
+            ->assertStatus(202);
+
+        $this->assertFalse(Book::sole()->verified);
     }
 
     /**
