@@ -240,6 +240,9 @@ const TITLE_NOISE_PATTERNS = [
     '/\b\d+\s*[-–]\s*(?:nashr|нашр)\b/iu',
     // "toʻldirilgan nashr", "qayta nashr", "тўлдирилган нашр"
     '/\b(?:to'.APOSTROPHE.'ldirilgan|qayta|тўлдирилган|қайта)\s+(?:nashr|нашр)\b/iu',
+    // "(used)". Left un-stripped, this transliterates into gibberish Cyrillic
+    // ("усед") rather than a real Uzbek word.
+    '/\(\s*used\s*\)/iu',
     // Series and edition notes publishers put in square brackets.
     '/\[[^\]]*\]/u',
 ];

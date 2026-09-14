@@ -29,6 +29,7 @@ class UzbekTitleTest extends TestCase
             'expanded edition' => ["Kecha va kunduz to'ldirilgan nashr", 'Kecha va kunduz'],
             'reprint' => ['Dunyoning ishlari qayta nashr', 'Dunyoning ishlari'],
             'bracketed series' => ['Ikki eshik orasi [Milliy roman]', 'Ikki eshik orasi'],
+            'used copy' => ['Erica James: Airs & Graces (used)', 'Erica James: Airs & Graces'],
             'trailing comma' => ['Shaytanat (qattiq muqova),', 'Shaytanat'],
             'already clean' => ['Ulugʻbek xazinasi', 'Ulugʻbek xazinasi'],
         ];
