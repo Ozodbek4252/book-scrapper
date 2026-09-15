@@ -152,6 +152,7 @@ final readonly class UpsertBookFromSource
             'language' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->language), 64),
             'description' => $this->firstValue($records, fn (RawBook $r) => $r->description),
             'cover_url' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->coverUrl), 2048),
+            'cover_path' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->coverPath), 2048),
             'isbn13' => normalize_isbn($this->firstValue($records, fn (RawBook $r) => $r->isbn)),
             'publisher_id' => $publisherName === null ? null : $this->publisherFor($publisherName)->id,
         ], static fn (mixed $value): bool => $value !== null);

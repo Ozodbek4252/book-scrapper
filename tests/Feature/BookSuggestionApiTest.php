@@ -11,6 +11,8 @@ use App\Models\BookSource;
 use App\Models\User;
 use App\Scraping\DTO\RawBook;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -125,5 +127,101 @@ class BookSuggestionApiTest extends TestCase
         $this->postJson('/api/v1/books/suggestions', $this->valid(['description' => str_repeat('a', 5001)]))
             ->assertStatus(422)
             ->assertJsonValidationErrors('description');
+    }
+
+    public function test_a_photographed_cover_is_stored_and_kept_on_the_book(): void
+    {
+        Storage::fake('public');
+
+        $this->post('/api/v1/books/suggestions', $this->valid([
+            'cover' => UploadedFile::fake()->image('lol.jpg', 900, 1350),
+        ]))->assertStatus(202);
+
+        $book = Book::sole();
+
+        $this->assertNotNull($book->cover_path, 'the photograph should reach the book');
+        Storage::disk('public')->assertExists($book->cover_path);
+        $this->assertStringStartsWith('covers/', $book->cover_path);
+    }
+
+    public function test_a_stored_cover_is_served_as_the_cover_url(): void
+    {
+        Storage::fake('public');
+
+        $this->post('/api/v1/books/suggestions', $this->valid([
+            'cover' => UploadedFile::fake()->image('lol.jpg'),
+        ]))->assertStatus(202);
+
+        $book = Book::sole();
+        $this->assertNull($book->cover_url, 'nothing scraped it, so there is no remote URL');
+
+        // A client asks one question — where is the cover — and gets one answer.
+        $this->getJson('/api/v1/books/'.$book->isbn13)
+            ->assertOk()
+            ->assertJsonPath('data.cover_url', Storage::disk('public')->url($book->cover_path));
+    }
+
+    public function test_a_submission_without_a_cover_still_works(): void
+    {
+        Storage::fake('public');
+
+        $this->post('/api/v1/books/suggestions', $this->valid())->assertStatus(202);
+
+        $this->assertNull(Book::sole()->cover_path);
+        Storage::disk('public')->assertDirectoryEmpty('/');
+    }
+
+    public function test_a_scraped_cover_url_outranks_a_reader_photograph(): void
+    {
+        Storage::fake('public');
+
+        $this->post('/api/v1/books/suggestions', $this->valid([
+            'cover' => UploadedFile::fake()->image('mine.jpg'),
+        ]))->assertStatus(202);
+
+        app(UpsertBookFromSource::class)->handle(
+            new RawBook(
+                sourceKey: 'asaxiy_uz',
+                url: 'https://asaxiy.uz/product/kecha-va-kunduz',
+                externalId: 'asaxiy:1',
+                title: 'Choʻlpon: Kecha va kunduz',
+                isbn: '9789943650190',
+                coverUrl: 'https://asaxiy.uz/covers/kecha.jpg',
+            ),
+            TrustLevel::Bookstore,
+        );
+
+        $book = Book::sole()->refresh();
+
+        // Both are kept: the shop's artwork is what clients see, and the
+        // reader's photograph stays on file behind it.
+        $this->assertSame('https://asaxiy.uz/covers/kecha.jpg', $book->cover_url);
+        $this->assertNotNull($book->cover_path);
+        $this->getJson('/api/v1/books/'.$book->isbn13)
+            ->assertJsonPath('data.cover_url', 'https://asaxiy.uz/covers/kecha.jpg');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function badCovers(): array
+    {
+        return [
+            'not an image' => [UploadedFile::fake()->create('notes.pdf', 40, 'application/pdf')],
+            'too large' => [UploadedFile::fake()->image('huge.jpg')->size(5121)],
+        ];
+    }
+
+    #[DataProvider('badCovers')]
+    public function test_it_refuses_a_bad_cover(UploadedFile $cover): void
+    {
+        Storage::fake('public');
+
+        $this->post('/api/v1/books/suggestions', $this->valid(['cover' => $cover]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('cover');
+
+        $this->assertSame(0, Book::count());
+        Storage::disk('public')->assertDirectoryEmpty('/');
     }
 }

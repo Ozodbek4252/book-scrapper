@@ -9,6 +9,7 @@ use App\Http\Requests\StoreBookSuggestionRequest;
 use App\Jobs\NormalizeAndUpsertJob;
 use App\Scraping\DTO\RawBook;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Arr;
 
 class BookSuggestionController extends Controller
 {
@@ -23,10 +24,21 @@ class BookSuggestionController extends Controller
     {
         $validated = $request->validated();
 
+        // Stored before the job is queued: the uploaded file only lives for
+        // the length of this request.
+        $coverPath = $request->hasFile('cover')
+            ? $request->file('cover')->store('covers', 'public')
+            : null;
+
+        // The book is identified by what it says, not by which photograph came
+        // with it — the same book sent twice with two different snapshots is
+        // still one submission.
+        $identity = Arr::except($validated, ['cover']);
+
         $raw = new RawBook(
             sourceKey: 'user_submission',
             url: $request->url(),
-            externalId: 'user:'.(string) $request->user()?->id.':'.md5((string) json_encode($validated)),
+            externalId: 'user:'.(string) $request->user()?->id.':'.md5((string) json_encode($identity)),
             title: $validated['title'],
             subtitle: $validated['subtitle'] ?? null,
             authors: array_values($validated['authors'] ?? []),
@@ -36,6 +48,7 @@ class BookSuggestionController extends Controller
             pages: isset($validated['pages']) ? (string) $validated['pages'] : null,
             language: $validated['language'] ?? null,
             description: $validated['description'] ?? null,
+            coverPath: $coverPath,
             payload: ['submitted_by' => $request->user()?->id],
         );
 

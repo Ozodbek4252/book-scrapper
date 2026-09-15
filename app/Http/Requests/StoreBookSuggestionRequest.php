@@ -33,6 +33,9 @@ class StoreBookSuggestionRequest extends FormRequest
             'pages' => ['nullable', 'integer', 'min:1', 'max:20000'],
             'language' => ['nullable', 'string', 'max:64'],
             'description' => ['nullable', 'string', 'max:5000'],
+            // A photograph of the book in the reader's hands. Bounded hard:
+            // this is the one endpoint that takes a file from the public.
+            'cover' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
         ];
     }
 

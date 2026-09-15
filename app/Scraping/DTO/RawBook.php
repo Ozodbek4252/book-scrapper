@@ -16,6 +16,9 @@ final readonly class RawBook
 {
     /**
      * @param  array<int, string>  $authors  Author names as printed, in the order shown.
+     * @param  string|null  $coverPath  A cover stored on our own disk, relative to the public
+     *                                  disk root. Scrapers give a URL; a reader photographing
+     *                                  a book they own gives us the file itself.
      * @param  array<string, mixed>  $payload  The whole raw record, stored forever.
      */
     public function __construct(
@@ -32,6 +35,7 @@ final readonly class RawBook
         public ?string $language = null,
         public ?string $description = null,
         public ?string $coverUrl = null,
+        public ?string $coverPath = null,
         public ?string $price = null,
         public ?bool $inStock = null,
         public array $payload = [],
@@ -60,6 +64,7 @@ final readonly class RawBook
             'language' => $this->language,
             'description' => $this->description,
             'cover_url' => $this->coverUrl,
+            'cover_path' => $this->coverPath,
             'price' => $this->price,
             'in_stock' => $this->inStock,
             'payload' => $this->payload,
@@ -85,6 +90,7 @@ final readonly class RawBook
             language: $data['language'] ?? null,
             description: $data['description'] ?? null,
             coverUrl: $data['cover_url'] ?? null,
+            coverPath: $data['cover_path'] ?? null,
             price: $data['price'] ?? null,
             inStock: $data['in_stock'] ?? null,
             payload: $data['payload'] ?? [],

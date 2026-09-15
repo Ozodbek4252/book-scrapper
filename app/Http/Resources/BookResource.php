@@ -7,6 +7,7 @@ namespace App\Http\Resources;
 use App\Models\Book;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @mixin Book
@@ -45,7 +46,11 @@ class BookResource extends JsonResource
             'pages' => $this->pages,
             'language' => $this->language,
             'description' => $this->description,
-            'cover_url' => $this->cover_url,
+            // One key for "where the cover is", whether it was scraped from a
+            // shop or photographed by a reader and stored on our own disk.
+            'cover_url' => $this->cover_url ?? ($this->cover_path === null
+                ? null
+                : Storage::disk('public')->url($this->cover_path)),
             'verified' => (bool) $this->verified,
         ];
     }
