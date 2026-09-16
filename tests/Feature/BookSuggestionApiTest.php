@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Catalogue\ReviewBookSubmission;
 use App\Catalogue\UpsertBookFromSource;
 use App\Enums\TrustLevel;
 use App\Models\Book;
 use App\Models\BookSource;
+use App\Models\BookSubmission;
+use App\Models\Device;
 use App\Models\User;
 use App\Scraping\DTO\RawBook;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +20,10 @@ use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
+/**
+ * The whole journey: an app user sends a book, a human approves it, and only
+ * then does it reach the catalogue.
+ */
 class BookSuggestionApiTest extends TestCase
 {
     use RefreshDatabase;
@@ -25,7 +32,9 @@ class BookSuggestionApiTest extends TestCase
     {
         parent::setUp();
 
-        Sanctum::actingAs(User::factory()->create());
+        Storage::fake('local');
+        Storage::fake('public');
+        Sanctum::actingAs(Device::factory()->create());
     }
 
     /**
@@ -43,11 +52,22 @@ class BookSuggestionApiTest extends TestCase
         ], $overrides);
     }
 
-    public function test_a_submitted_book_goes_through_the_same_merge_path_as_a_scrape(): void
+    /**
+     * Send a book and have a reviewer accept it unchanged.
+     */
+    private function submitAndApprove(array $overrides = []): Book
     {
-        $this->postJson('/api/v1/books/suggestions', $this->valid())->assertStatus(202);
+        $this->postJson('/api/v1/books/suggestions', $this->valid($overrides))->assertStatus(202);
 
-        $book = Book::sole();
+        return app(ReviewBookSubmission::class)->approve(
+            BookSubmission::latest('id')->sole(),
+            User::factory()->create(),
+        );
+    }
+
+    public function test_an_approved_book_is_normalized_the_same_way_a_scrape_is(): void
+    {
+        $book = $this->submitAndApprove();
 
         $this->assertSame('9789943650190', $book->isbn13);
         $this->assertSame('Choʻlpon: Kecha va kunduz', $book->title, 'the noise should be stripped');
@@ -55,20 +75,18 @@ class BookSuggestionApiTest extends TestCase
         $this->assertSame(2021, $book->published_year);
     }
 
-    public function test_it_arrives_unverified_and_least_trusted(): void
+    public function test_it_is_recorded_as_a_user_submission_at_the_lowest_trust(): void
     {
-        $this->postJson('/api/v1/books/suggestions', $this->valid())->assertStatus(202);
+        $this->submitAndApprove();
 
-        $this->assertFalse(Book::sole()->verified, 'a submission must wait for a human');
         $this->assertSame('user_submission', BookSource::sole()->source_key);
         $this->assertSame(TrustLevel::UserSubmission, BookSource::sole()->trustLevel());
     }
 
     public function test_a_real_source_outranks_a_user_submission_field_by_field(): void
     {
-        $this->postJson('/api/v1/books/suggestions', $this->valid(['pages' => 999]))->assertStatus(202);
+        $this->submitAndApprove(['pages' => 999]);
 
-        // The same book later arrives from a shop, which is trusted more.
         app(UpsertBookFromSource::class)->handle(
             new RawBook(
                 sourceKey: 'asaxiy_uz',
@@ -82,6 +100,49 @@ class BookSuggestionApiTest extends TestCase
         );
 
         $this->assertSame(336, Book::sole()->pages);
+    }
+
+    public function test_a_book_without_an_isbn_merges_on_its_fingerprint(): void
+    {
+        $book = $this->submitAndApprove(['isbn' => null]);
+
+        $this->assertNull($book->isbn13);
+        $this->assertNotNull($book->fingerprint);
+    }
+
+    public function test_an_approved_photograph_becomes_the_books_cover(): void
+    {
+        $book = $this->submitAndApprove(['cover' => UploadedFile::fake()->image('cover.jpg')]);
+
+        $this->assertNotNull($book->cover_path);
+        Storage::disk('public')->assertExists($book->cover_path);
+    }
+
+    public function test_a_book_without_a_photograph_still_works(): void
+    {
+        $book = $this->submitAndApprove();
+
+        $this->assertNull($book->cover_path);
+        $this->assertSame(1, Book::count());
+    }
+
+    public function test_a_scraped_cover_url_still_wins_over_a_reader_photograph(): void
+    {
+        app(UpsertBookFromSource::class)->handle(
+            new RawBook(
+                sourceKey: 'asaxiy_uz',
+                url: 'https://asaxiy.uz/product/x',
+                externalId: 'A1',
+                title: 'Choʻlpon: Kecha va kunduz',
+                isbn: '9789943650190',
+                coverUrl: 'https://assets.asaxiy.uz/cover.jpg',
+            ),
+            TrustLevel::Bookstore,
+        );
+
+        $this->submitAndApprove(['cover' => UploadedFile::fake()->image('snapshot.jpg')]);
+
+        $this->assertSame('https://assets.asaxiy.uz/cover.jpg', Book::sole()->cover_url);
     }
 
     /**
@@ -99,129 +160,39 @@ class BookSuggestionApiTest extends TestCase
             'negative pages' => [['pages' => -5], 'pages'],
             'too many authors' => [['authors' => array_fill(0, 11, 'A Person')], 'authors'],
             'empty author' => [['authors' => ['']], 'authors.0'],
+            'overlong description' => [['description' => str_repeat('a', 5001)], 'description'],
         ];
     }
 
     #[DataProvider('badSubmissions')]
-    public function test_it_refuses_bad_input(array $overrides, string $field): void
+    public function test_rubbish_never_reaches_the_review_queue(array $overrides, string $field): void
     {
         $this->postJson('/api/v1/books/suggestions', $this->valid($overrides))
             ->assertStatus(422)
             ->assertJsonValidationErrors($field);
 
+        $this->assertSame(0, BookSubmission::count());
         $this->assertSame(0, Book::count());
     }
 
-    public function test_a_submission_without_an_isbn_is_allowed_and_merges_on_its_fingerprint(): void
-    {
-        $this->postJson('/api/v1/books/suggestions', $this->valid(['isbn' => null]))->assertStatus(202);
-
-        $book = Book::sole();
-
-        $this->assertNull($book->isbn13);
-        $this->assertNotNull($book->fingerprint);
-    }
-
-    public function test_an_overlong_description_is_refused_rather_than_truncated(): void
-    {
-        $this->postJson('/api/v1/books/suggestions', $this->valid(['description' => str_repeat('a', 5001)]))
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('description');
-    }
-
-    public function test_a_photographed_cover_is_stored_and_kept_on_the_book(): void
-    {
-        Storage::fake('public');
-
-        $this->post('/api/v1/books/suggestions', $this->valid([
-            'cover' => UploadedFile::fake()->image('lol.jpg', 900, 1350),
-        ]))->assertStatus(202);
-
-        $book = Book::sole();
-
-        $this->assertNotNull($book->cover_path, 'the photograph should reach the book');
-        Storage::disk('public')->assertExists($book->cover_path);
-        $this->assertStringStartsWith('covers/', $book->cover_path);
-    }
-
-    public function test_a_stored_cover_is_served_as_the_cover_url(): void
-    {
-        Storage::fake('public');
-
-        $this->post('/api/v1/books/suggestions', $this->valid([
-            'cover' => UploadedFile::fake()->image('lol.jpg'),
-        ]))->assertStatus(202);
-
-        $book = Book::sole();
-        $this->assertNull($book->cover_url, 'nothing scraped it, so there is no remote URL');
-
-        // A client asks one question — where is the cover — and gets one answer.
-        $this->getJson('/api/v1/books/'.$book->isbn13)
-            ->assertOk()
-            ->assertJsonPath('data.cover_url', Storage::disk('public')->url($book->cover_path));
-    }
-
-    public function test_a_submission_without_a_cover_still_works(): void
-    {
-        Storage::fake('public');
-
-        $this->post('/api/v1/books/suggestions', $this->valid())->assertStatus(202);
-
-        $this->assertNull(Book::sole()->cover_path);
-        Storage::disk('public')->assertDirectoryEmpty('/');
-    }
-
-    public function test_a_scraped_cover_url_outranks_a_reader_photograph(): void
-    {
-        Storage::fake('public');
-
-        $this->post('/api/v1/books/suggestions', $this->valid([
-            'cover' => UploadedFile::fake()->image('mine.jpg'),
-        ]))->assertStatus(202);
-
-        app(UpsertBookFromSource::class)->handle(
-            new RawBook(
-                sourceKey: 'asaxiy_uz',
-                url: 'https://asaxiy.uz/product/kecha-va-kunduz',
-                externalId: 'asaxiy:1',
-                title: 'Choʻlpon: Kecha va kunduz',
-                isbn: '9789943650190',
-                coverUrl: 'https://asaxiy.uz/covers/kecha.jpg',
-            ),
-            TrustLevel::Bookstore,
-        );
-
-        $book = Book::sole()->refresh();
-
-        // Both are kept: the shop's artwork is what clients see, and the
-        // reader's photograph stays on file behind it.
-        $this->assertSame('https://asaxiy.uz/covers/kecha.jpg', $book->cover_url);
-        $this->assertNotNull($book->cover_path);
-        $this->getJson('/api/v1/books/'.$book->isbn13)
-            ->assertJsonPath('data.cover_url', 'https://asaxiy.uz/covers/kecha.jpg');
-    }
-
     /**
-     * @return array<string, mixed>
+     * @return array<string, array{0: UploadedFile}>
      */
     public static function badCovers(): array
     {
         return [
-            'not an image' => [UploadedFile::fake()->create('notes.pdf', 40, 'application/pdf')],
-            'too large' => [UploadedFile::fake()->image('huge.jpg')->size(5121)],
+            'not an image' => [UploadedFile::fake()->create('notes.pdf', 100, 'application/pdf')],
+            'too large' => [UploadedFile::fake()->image('huge.jpg')->size(6000)],
         ];
     }
 
     #[DataProvider('badCovers')]
-    public function test_it_refuses_a_bad_cover(UploadedFile $cover): void
+    public function test_it_refuses_a_bad_photograph(UploadedFile $cover): void
     {
-        Storage::fake('public');
-
-        $this->post('/api/v1/books/suggestions', $this->valid(['cover' => $cover]))
+        $this->postJson('/api/v1/books/suggestions', $this->valid(['cover' => $cover]))
             ->assertStatus(422)
             ->assertJsonValidationErrors('cover');
 
-        $this->assertSame(0, Book::count());
-        Storage::disk('public')->assertDirectoryEmpty('/');
+        $this->assertSame(0, BookSubmission::count());
     }
 }

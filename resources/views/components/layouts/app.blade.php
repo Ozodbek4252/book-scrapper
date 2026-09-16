@@ -23,6 +23,7 @@
                 @foreach ([
                     ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Dashboard'],
                     ['route' => 'books.index', 'pattern' => 'books.*', 'label' => 'Books'],
+                    ['route' => 'submissions.index', 'pattern' => 'submissions.*', 'label' => 'Submissions'],
                     ['route' => 'scrape-runs.index', 'pattern' => 'scrape-runs.*', 'label' => 'Scrape runs'],
                 ] as $item)
                     @php($active = request()->routeIs($item['pattern']))

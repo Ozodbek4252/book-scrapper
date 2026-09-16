@@ -109,6 +109,12 @@ return [
      */
     'api_rate_limit' => (int) env('API_RATE_LIMIT', 60),
 
+    /**
+     * Device enrolments per minute per address. Deliberately small: each one
+     * mints a token.
+     */
+    'enrol_rate_limit' => (int) env('ENROL_RATE_LIMIT', 5),
+
     /*
     |--------------------------------------------------------------------------
     | Sources

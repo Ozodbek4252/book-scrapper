@@ -33,5 +33,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(
             (int) config('scraping.api_rate_limit', 60)
         )->by($request->user()?->id ?: $request->ip()));
+
+        // Enrolment hands out a token, so it gets a much smaller allowance.
+        RateLimiter::for('enrol', fn (Request $request): Limit => Limit::perMinute(
+            (int) config('scraping.enrol_rate_limit', 5)
+        )->by($request->ip()));
     }
 }

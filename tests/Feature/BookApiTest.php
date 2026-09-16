@@ -61,17 +61,15 @@ class BookApiTest extends TestCase
     }
 
     /**
-     * Writes are public too, which is the part worth thinking about: anyone can
-     * add a book. The merge keeps the damage bounded, since a submission lands
-     * unverified at the lowest trust level and cannot overwrite a scraped
-     * field, but it does create rows.
+     * Reading is open, but sending a book in is not: a submission has to be
+     * traceable to the install that made it, so it needs a device token.
      */
-    public function test_anyone_can_submit_a_book_while_the_api_is_open(): void
+    public function test_submitting_a_book_needs_a_device_token(): void
     {
         $this->postJson('/api/v1/books/suggestions', ['title' => 'Yangi kitob'])
-            ->assertStatus(202);
+            ->assertUnauthorized();
 
-        $this->assertFalse(Book::sole()->verified);
+        $this->assertSame(0, Book::count());
     }
 
     /**

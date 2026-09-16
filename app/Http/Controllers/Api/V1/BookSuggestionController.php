@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\SubmissionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBookSuggestionRequest;
-use App\Jobs\NormalizeAndUpsertJob;
+use App\Models\Book;
+use App\Models\BookSubmission;
+use App\Models\Device;
 use App\Scraping\DTO\RawBook;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
@@ -14,31 +17,32 @@ use Illuminate\Support\Arr;
 class BookSuggestionController extends Controller
 {
     /**
-     * Take a book a mobile app user could not find.
+     * Take a book an app user says is missing, or a change to one we hold.
      *
-     * It goes through exactly the same merge path a scraped book does, at the
-     * lowest trust level, so any real source outranks it field by field. It
-     * arrives unverified and waits for a human.
+     * Nothing reaches the catalogue here. The submission waits in
+     * `book_submissions` until a human approves it, because people photograph
+     * the wrong thing and mistype titles. `$book` being null means the user is
+     * proposing a book we do not have; otherwise it is a proposed edit.
      */
-    public function store(StoreBookSuggestionRequest $request): JsonResponse
+    public function store(StoreBookSuggestionRequest $request, ?Book $book = null): JsonResponse
     {
         $validated = $request->validated();
+        $device = $request->user();
 
-        // Stored before the job is queued: the uploaded file only lives for
-        // the length of this request.
+        if ($device instanceof Device && $device->isBlocked()) {
+            return response()->json(['message' => 'This device cannot submit books.'], 403);
+        }
+
+        // The private disk: an unreviewed photograph must never be publicly
+        // reachable. It is published only once the submission is approved.
         $coverPath = $request->hasFile('cover')
-            ? $request->file('cover')->store('covers', 'public')
+            ? $request->file('cover')->store('submissions', 'local')
             : null;
-
-        // The book is identified by what it says, not by which photograph came
-        // with it — the same book sent twice with two different snapshots is
-        // still one submission.
-        $identity = Arr::except($validated, ['cover']);
 
         $raw = new RawBook(
             sourceKey: 'user_submission',
             url: $request->url(),
-            externalId: 'user:'.(string) $request->user()?->id.':'.md5((string) json_encode($identity)),
+            externalId: 'device:'.(string) $device?->getKey().':'.md5((string) json_encode(Arr::except($validated, ['cover']))),
             title: $validated['title'],
             subtitle: $validated['subtitle'] ?? null,
             authors: array_values($validated['authors'] ?? []),
@@ -48,14 +52,24 @@ class BookSuggestionController extends Controller
             pages: isset($validated['pages']) ? (string) $validated['pages'] : null,
             language: $validated['language'] ?? null,
             description: $validated['description'] ?? null,
-            coverPath: $coverPath,
-            payload: ['submitted_by' => $request->user()?->id],
         );
 
-        NormalizeAndUpsertJob::dispatch('user_submission', $raw->toArray());
+        $submission = BookSubmission::create([
+            'status' => SubmissionStatus::Pending,
+            'book_id' => $book?->id,
+            'device_id' => $device instanceof Device ? $device->getKey() : null,
+            'payload' => $raw->toArray(),
+            'cover_path' => $coverPath,
+        ]);
 
         return response()->json([
-            'message' => 'Thank you. The book has been queued for review.',
+            'message' => $submission->isUpdate()
+                ? 'Thank you. Your change is waiting for review.'
+                : 'Thank you. The book is waiting for review.',
+            'submission' => [
+                'id' => $submission->id,
+                'status' => $submission->status->value,
+            ],
         ], 202);
     }
 }

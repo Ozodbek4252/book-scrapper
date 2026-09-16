@@ -41,10 +41,24 @@ final readonly class UpsertBookFromSource
             $book = $this->resolveBook($raw);
             $created = $book->wasRecentlyCreated;
 
-            $this->recordSource($book, $raw);
-            $this->rebuild($book->fresh(['sources']) ?? $book, $trust);
+            $this->applyTo($book, $raw, $trust);
 
             return ['book' => $book->refresh(), 'created' => $created];
+        });
+    }
+
+    /**
+     * Fold a record into one particular book.
+     *
+     * Used when the book is already known and must not be re-resolved — an
+     * approved correction to a specific record, where a mistyped ISBN in the
+     * payload should not silently move the change onto a different book.
+     */
+    public function applyTo(Book $book, RawBook $raw, TrustLevel $trust): void
+    {
+        DB::transaction(function () use ($book, $raw, $trust): void {
+            $this->recordSource($book, $raw);
+            $this->rebuild($book->fresh(['sources']) ?? $book, $trust);
         });
     }
 
@@ -153,7 +167,7 @@ final readonly class UpsertBookFromSource
             'description' => $this->firstValue($records, fn (RawBook $r) => $r->description),
             'cover_url' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->coverUrl), 2048),
             'cover_path' => self::clamp($this->firstValue($records, fn (RawBook $r) => $r->coverPath), 2048),
-            'isbn13' => normalize_isbn($this->firstValue($records, fn (RawBook $r) => $r->isbn)),
+            'isbn13' => $this->claimableIsbn($book, normalize_isbn($this->firstValue($records, fn (RawBook $r) => $r->isbn))),
             'publisher_id' => $publisherName === null ? null : $this->publisherFor($publisherName)->id,
         ], static fn (mixed $value): bool => $value !== null);
 
@@ -168,6 +182,28 @@ final readonly class UpsertBookFromSource
         if ($authorNames !== [] && ! $book->isLocked('authors')) {
             $this->syncAuthors($book, $authorNames);
         }
+    }
+
+    /**
+     * An ISBN this book is allowed to take.
+     *
+     * A source can be wrong about an ISBN, and an approved correction can
+     * carry a typo. Letting that through would either collide with the unique
+     * index or quietly move another book's identity onto this one, so an ISBN
+     * that already belongs to somebody else is refused and the book keeps what
+     * it had.
+     */
+    private function claimableIsbn(Book $book, ?string $isbn13): ?string
+    {
+        if ($isbn13 === null || $isbn13 === $book->isbn13) {
+            return $isbn13;
+        }
+
+        $takenByAnother = Book::where('isbn13', $isbn13)
+            ->whereKeyNot($book->getKey())
+            ->exists();
+
+        return $takenByAnother ? $book->isbn13 : $isbn13;
     }
 
     /**
