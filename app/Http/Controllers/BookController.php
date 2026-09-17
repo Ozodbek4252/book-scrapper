@@ -32,10 +32,12 @@ class BookController extends Controller
                 'isbn10',
             ], 'like', "%{$search}%"))
             ->when($request->boolean('unverified'), fn ($query) => $query->where('verified', false))
-            ->when($source !== '', fn ($query) => $query->whereHas(
-                'sources',
-                fn ($sources) => $sources->where('source_key', $source),
-            ))
+            // "Only" rather than "touched by": a submission a real scraper has
+            // since confirmed is no longer what someone filtering by
+            // user_submission is trying to audit.
+            ->when($source !== '', fn ($query) => $query
+                ->whereHas('sources', fn ($sources) => $sources->where('source_key', $source))
+                ->whereDoesntHave('sources', fn ($sources) => $sources->where('source_key', '!=', $source)))
             ->when($request->boolean('missing_isbn'), fn ($query) => $query->whereNull('isbn13'))
             ->when($request->boolean('missing_cover'), fn ($query) => $query->whereNull('cover_url')->whereNull('cover_path'))
             ->when($yearFrom !== null, fn ($query) => $query->where('published_year', '>=', $yearFrom))

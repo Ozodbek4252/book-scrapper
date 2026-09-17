@@ -110,6 +110,20 @@ class CataloguePagesTest extends TestCase
             ->assertDontSee('From a reader');
     }
 
+    public function test_filtering_by_source_excludes_a_book_a_real_scraper_has_since_confirmed(): void
+    {
+        $onlySubmitted = Book::factory()->has(BookSource::factory()->forSource('user_submission'), 'sources')->create(['title' => 'Only submitted']);
+        $confirmedToo = Book::factory()
+            ->has(BookSource::factory()->forSource('user_submission'), 'sources')
+            ->has(BookSource::factory()->forSource('asaxiy_uz'), 'sources')
+            ->create(['title' => 'Also confirmed by asaxiy']);
+
+        $this->get(route('books.index', ['source' => 'user_submission']))
+            ->assertOk()
+            ->assertSee('Only submitted')
+            ->assertDontSee('Also confirmed by asaxiy');
+    }
+
     public function test_the_book_list_can_filter_to_books_missing_an_isbn(): void
     {
         $withoutIsbn = Book::factory()->withoutIsbn()->create(['title' => 'No ISBN yet']);
