@@ -2,11 +2,14 @@ name: book-scraper-prod
 
 # Shared definition for every container that runs application PHP code.
 # Values come from the shell or the .env file Compose reads automatically.
+# Built and pushed by .github/workflows/ci-cd.yml, not on the VPS: deploy
+# does `docker compose pull` rather than `--build`. The `build:` section
+# below stays for local testing on a machine that isn't memory-constrained.
 x-app: &app
   build:
     context: .
     target: production
-  image: book-scraper:latest
+  image: ghcr.io/ozodbek4252/book-scraper:latest
   restart: unless-stopped
   environment: &app-env
     APP_ENV: production
@@ -54,7 +57,7 @@ services:
     build:
       context: .
       target: web
-    image: book-scraper-web:latest
+    image: ghcr.io/ozodbek4252/book-scraper-web:latest
     restart: unless-stopped
     volumes:
       # Lets nginx serve anything published through `artisan storage:link`.
