@@ -5,7 +5,7 @@
     @endif
 
     <x-slot:actions>
-        <a href="{{ route('books.index') }}" class="text-sm text-neutral-500 hover:underline dark:text-neutral-400">← Back to books</a>
+        <a href="{{ route('books.index', request()->query()) }}" class="text-sm text-neutral-500 hover:underline dark:text-neutral-400">← Back to books</a>
     </x-slot:actions>
 
     <div class="grid gap-6 lg:grid-cols-3">

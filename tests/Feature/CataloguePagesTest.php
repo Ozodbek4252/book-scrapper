@@ -202,6 +202,16 @@ class CataloguePagesTest extends TestCase
             ->assertSee('asaxiy_uz');
     }
 
+    public function test_the_back_link_keeps_the_filters_that_were_active(): void
+    {
+        $book = Book::factory()->create();
+
+        $this->get(route('books.show', $book).'?source=asaxiy_uz&q=something')
+            ->assertOk()
+            // Blade escapes the "&" between query params to "&amp;" in the href.
+            ->assertSee(route('books.index', ['source' => 'asaxiy_uz', 'q' => 'something']));
+    }
+
     public function test_a_book_page_renders_the_raw_payload(): void
     {
         $book = Book::factory()->create();

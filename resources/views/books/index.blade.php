@@ -142,7 +142,7 @@
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             @foreach ($books as $book)
                 <a
-                    href="{{ route('books.show', $book) }}"
+                    href="{{ route('books.show', ['book' => $book] + request()->query()) }}"
                     class="group overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-600"
                 >
                     <div class="aspect-2/3 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
@@ -199,7 +199,7 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-3">
-                                    <a href="{{ route('books.show', $book) }}" class="font-medium hover:underline">
+                                    <a href="{{ route('books.show', ['book' => $book] + request()->query()) }}" class="font-medium hover:underline">
                                         {{ $book->title }}
                                     </a>
                                     @if ($book->title_cyrillic && $book->title_cyrillic !== $book->title)
