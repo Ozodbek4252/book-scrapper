@@ -99,6 +99,63 @@ class CataloguePagesTest extends TestCase
             ->assertDontSee('Already checked');
     }
 
+    public function test_the_book_list_can_filter_by_source(): void
+    {
+        $fromAsaxiy = Book::factory()->has(BookSource::factory()->forSource('asaxiy_uz'), 'sources')->create(['title' => 'From asaxiy']);
+        $fromSubmission = Book::factory()->has(BookSource::factory()->forSource('user_submission'), 'sources')->create(['title' => 'From a reader']);
+
+        $this->get(route('books.index', ['source' => 'asaxiy_uz']))
+            ->assertOk()
+            ->assertSee('From asaxiy')
+            ->assertDontSee('From a reader');
+    }
+
+    public function test_the_book_list_can_filter_to_books_missing_an_isbn(): void
+    {
+        $withoutIsbn = Book::factory()->withoutIsbn()->create(['title' => 'No ISBN yet']);
+        $withIsbn = Book::factory()->create(['title' => 'Fully catalogued', 'isbn13' => '9789943123456']);
+
+        $this->get(route('books.index', ['missing_isbn' => 1]))
+            ->assertOk()
+            ->assertSee('No ISBN yet')
+            ->assertDontSee('Fully catalogued');
+    }
+
+    public function test_the_book_list_can_filter_to_books_missing_a_cover(): void
+    {
+        $withoutCover = Book::factory()->create(['title' => 'Bare title', 'cover_url' => null, 'cover_path' => null]);
+        $withCover = Book::factory()->create(['title' => 'Has a cover', 'cover_url' => 'https://example.uz/cover.jpg']);
+
+        $this->get(route('books.index', ['missing_cover' => 1]))
+            ->assertOk()
+            ->assertSee('Bare title')
+            ->assertDontSee('Has a cover');
+    }
+
+    public function test_the_book_list_can_filter_by_published_year_range(): void
+    {
+        $inRange = Book::factory()->create(['title' => 'Published in range', 'published_year' => 2015]);
+        $tooEarly = Book::factory()->create(['title' => 'Too early', 'published_year' => 1990]);
+        $tooLate = Book::factory()->create(['title' => 'Too late', 'published_year' => 2024]);
+
+        $this->get(route('books.index', ['year_from' => 2000, 'year_to' => 2020]))
+            ->assertOk()
+            ->assertSee('Published in range')
+            ->assertDontSee('Too early')
+            ->assertDontSee('Too late');
+    }
+
+    public function test_the_book_list_can_filter_by_publisher_name(): void
+    {
+        $match = Book::factory()->for(Publisher::factory()->create(['name' => 'Akademnashr']))->create(['title' => 'From akademnashr']);
+        $other = Book::factory()->for(Publisher::factory()->create(['name' => 'Kalibr Books']))->create(['title' => 'From kalibr']);
+
+        $this->get(route('books.index', ['publisher' => 'akadem']))
+            ->assertOk()
+            ->assertSee('From akademnashr')
+            ->assertDontSee('From kalibr');
+    }
+
     public function test_the_empty_book_list_renders_its_message_cleanly(): void
     {
         // A truncated message means the Blade attribute quoting broke again.

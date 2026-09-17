@@ -3,57 +3,133 @@
     <x-slot:subheading>{{ Number::format($books->total()) }} in the catalogue</x-slot:subheading>
 
     <x-slot:actions>
-        <div class="flex flex-wrap items-center gap-3">
-            <form method="GET" action="{{ route('books.index') }}" class="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="view" value="{{ $view }}">
-                <label for="q" class="sr-only">Search by title or ISBN</label>
-                <input
-                    id="q"
-                    type="search"
-                    name="q"
-                    value="{{ $search }}"
-                    placeholder="Title in either script, or ISBN"
-                    class="w-72 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
-                >
-                <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-                    <input
-                        type="checkbox"
-                        name="unverified"
-                        value="1"
-                        @checked(request()->boolean('unverified'))
-                        class="rounded border-neutral-300 dark:border-neutral-700"
-                    >
-                    Unverified only
-                </label>
-                <button type="submit" class="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300">
-                    Search
-                </button>
-            </form>
-
-            <div class="flex items-center rounded-md border border-neutral-300 p-0.5 dark:border-neutral-700">
-                <a
-                    href="{{ request()->fullUrlWithQuery(['view' => 'list']) }}"
-                    @class([
-                        'rounded px-2.5 py-1 text-sm transition',
-                        'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' => $view === 'list',
-                        'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800' => $view !== 'list',
-                    ])
-                    aria-label="List view"
-                    @if ($view === 'list') aria-current="page" @endif
-                >List</a>
-                <a
-                    href="{{ request()->fullUrlWithQuery(['view' => 'grid']) }}"
-                    @class([
-                        'rounded px-2.5 py-1 text-sm transition',
-                        'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' => $view === 'grid',
-                        'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800' => $view !== 'grid',
-                    ])
-                    aria-label="Grid view"
-                    @if ($view === 'grid') aria-current="page" @endif
-                >Grid</a>
-            </div>
+        <div class="flex items-center rounded-md border border-neutral-300 p-0.5 dark:border-neutral-700">
+            <a
+                href="{{ request()->fullUrlWithQuery(['view' => 'list']) }}"
+                @class([
+                    'rounded px-2.5 py-1 text-sm transition',
+                    'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' => $view === 'list',
+                    'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800' => $view !== 'list',
+                ])
+                aria-label="List view"
+                @if ($view === 'list') aria-current="page" @endif
+            >List</a>
+            <a
+                href="{{ request()->fullUrlWithQuery(['view' => 'grid']) }}"
+                @class([
+                    'rounded px-2.5 py-1 text-sm transition',
+                    'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900' => $view === 'grid',
+                    'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800' => $view !== 'grid',
+                ])
+                aria-label="Grid view"
+                @if ($view === 'grid') aria-current="page" @endif
+            >Grid</a>
         </div>
     </x-slot:actions>
+
+    @php
+        $hasActiveFilter = $search !== '' || $source !== '' || $publisher !== '' || $yearFrom !== null || $yearTo !== null
+            || request()->boolean('unverified') || request()->boolean('missing_isbn') || request()->boolean('missing_cover');
+    @endphp
+
+    <form method="GET" action="{{ route('books.index') }}" class="mb-6 flex flex-wrap items-center gap-2">
+        <input type="hidden" name="view" value="{{ $view }}">
+
+        <label for="q" class="sr-only">Search by title or ISBN</label>
+        <input
+            id="q"
+            type="search"
+            name="q"
+            value="{{ $search }}"
+            placeholder="Title in either script, or ISBN"
+            class="w-64 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
+        >
+
+        <label for="source" class="sr-only">Source</label>
+        <select
+            id="source"
+            name="source"
+            class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
+        >
+            <option value="">Any source</option>
+            @foreach ($sourceKeys as $key)
+                <option value="{{ $key }}" @selected($source === $key)>{{ $key }}</option>
+            @endforeach
+        </select>
+
+        <label for="publisher" class="sr-only">Publisher</label>
+        <input
+            id="publisher"
+            type="text"
+            name="publisher"
+            value="{{ $publisher }}"
+            placeholder="Publisher"
+            class="w-36 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
+        >
+
+        <label for="year_from" class="sr-only">Year from</label>
+        <input
+            id="year_from"
+            type="number"
+            name="year_from"
+            value="{{ $yearFrom }}"
+            placeholder="Year from"
+            class="w-28 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
+        >
+
+        <label for="year_to" class="sr-only">Year to</label>
+        <input
+            id="year_to"
+            type="number"
+            name="year_to"
+            value="{{ $yearTo }}"
+            placeholder="Year to"
+            class="w-28 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:focus:border-neutral-100"
+        >
+
+        <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <input
+                type="checkbox"
+                name="unverified"
+                value="1"
+                @checked(request()->boolean('unverified'))
+                class="rounded border-neutral-300 dark:border-neutral-700"
+            >
+            Unverified only
+        </label>
+
+        <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <input
+                type="checkbox"
+                name="missing_isbn"
+                value="1"
+                @checked(request()->boolean('missing_isbn'))
+                class="rounded border-neutral-300 dark:border-neutral-700"
+            >
+            Missing ISBN
+        </label>
+
+        <label class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <input
+                type="checkbox"
+                name="missing_cover"
+                value="1"
+                @checked(request()->boolean('missing_cover'))
+                class="rounded border-neutral-300 dark:border-neutral-700"
+            >
+            Missing cover
+        </label>
+
+        <button type="submit" class="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300">
+            Search
+        </button>
+
+        @if ($hasActiveFilter)
+            <a href="{{ route('books.index', ['view' => $view]) }}" class="text-sm text-neutral-500 underline hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100">
+                Clear filters
+            </a>
+        @endif
+    </form>
 
     @if ($books->isEmpty())
         @php($emptyMessage = $search !== ''
