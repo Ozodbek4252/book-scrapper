@@ -170,6 +170,17 @@ class CataloguePagesTest extends TestCase
             ->assertDontSee('From kalibr');
     }
 
+    public function test_the_book_list_shows_a_result_count_and_numbered_pages(): void
+    {
+        // 24 per page: 30 books means a real page 2 to link to.
+        Book::factory()->count(30)->create();
+
+        $this->get(route('books.index'))
+            ->assertOk()
+            ->assertSee('30')
+            ->assertSee('Go to page 2', escape: false);
+    }
+
     public function test_the_empty_book_list_renders_its_message_cleanly(): void
     {
         // A truncated message means the Blade attribute quoting broke again.
