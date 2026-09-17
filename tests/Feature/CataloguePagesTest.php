@@ -8,6 +8,7 @@ use App\Enums\ScrapeStage;
 use App\Models\Author;
 use App\Models\Book;
 use App\Models\BookSource;
+use App\Models\BookSubmission;
 use App\Models\Publisher;
 use App\Models\ScrapeError;
 use App\Models\ScrapeRun;
@@ -33,6 +34,24 @@ class CataloguePagesTest extends TestCase
         $this->get(route('dashboard'))
             ->assertOk()
             ->assertSee('No scrape has run yet.');
+    }
+
+    public function test_the_dashboard_flags_submissions_waiting_for_review(): void
+    {
+        BookSubmission::factory()->count(2)->create();
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('2 submissions from the app waiting for review.');
+    }
+
+    public function test_the_dashboard_says_nothing_when_the_review_queue_is_empty(): void
+    {
+        BookSubmission::factory()->approved()->create();
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('waiting for review');
     }
 
     public function test_the_book_list_shows_titles_in_both_scripts(): void

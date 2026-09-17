@@ -2,6 +2,16 @@
     <x-slot:heading>Dashboard</x-slot:heading>
     <x-slot:subheading>Books published in Uzbekistan, merged from every source.</x-slot:subheading>
 
+    @if ($pendingSubmissions > 0)
+        <a
+            href="{{ route('submissions.index') }}"
+            class="mb-6 flex items-center justify-between gap-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 transition hover:border-amber-400 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+        >
+            <span>{{ Number::format($pendingSubmissions) }} {{ Str::plural('submission', $pendingSubmissions) }} from the app waiting for review.</span>
+            <span class="font-medium">Review &rarr;</span>
+        </a>
+    @endif
+
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <x-stat-card label="Books" :value="Number::format($summary['books'])" />
         <x-stat-card

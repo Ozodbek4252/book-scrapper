@@ -12,6 +12,7 @@ COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /u
 
 RUN install-php-extensions \
         bcmath \
+        gd \
         intl \
         opcache \
         pcntl \

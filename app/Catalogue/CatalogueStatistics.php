@@ -7,6 +7,7 @@ namespace App\Catalogue;
 use App\Models\Author;
 use App\Models\Book;
 use App\Models\BookSource;
+use App\Models\BookSubmission;
 use App\Models\Publisher;
 use Illuminate\Support\Collection;
 
@@ -69,6 +70,18 @@ final readonly class CatalogueStatistics
             'authors' => Author::count(),
             'publishers' => Publisher::count(),
         ];
+    }
+
+    /**
+     * Submissions from the app sitting in the review queue.
+     *
+     * Distinct from `unverified` above: a submission holds nothing in the
+     * catalogue at all until a human decides, so it would otherwise be
+     * invisible on this dashboard.
+     */
+    public function pendingSubmissions(): int
+    {
+        return BookSubmission::query()->pending()->count();
     }
 
     /**

@@ -15,6 +15,7 @@ class DashboardController extends Controller
         return view('dashboard', [
             'summary' => $statistics->summary(),
             'sources' => $statistics->sources(),
+            'pendingSubmissions' => $statistics->pendingSubmissions(),
             'recentRuns' => ScrapeRun::query()
                 ->latest('id')
                 ->limit(5)
