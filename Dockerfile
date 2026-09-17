@@ -118,7 +118,10 @@ RUN mkdir -p \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
-    && chown -R www-data:www-data storage bootstrap/cache
+    && chown -R www-data:www-data storage bootstrap/cache \
+    # `artisan storage:link` needs a writable public/ and a booted app,
+    # neither guaranteed here — this is the same relative link it creates.
+    && ln -sf ../storage/app/public public/storage
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD SCRIPT_NAME=/fpm-ping SCRIPT_FILENAME=/fpm-ping REQUEST_METHOD=GET \

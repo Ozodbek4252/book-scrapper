@@ -112,9 +112,9 @@
                 </div>
             </x-card>
 
-            @if ($book->cover_url)
+            @if ($book->resolved_cover_url)
                 <x-card title="Cover">
-                    <img src="{{ $book->cover_url }}" alt="Cover of {{ $book->title }}" class="w-full" loading="lazy">
+                    <img src="{{ $book->resolved_cover_url }}" alt="Cover of {{ $book->title }}" class="w-full" loading="lazy">
                 </x-card>
             @endif
         </div>

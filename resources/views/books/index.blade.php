@@ -70,9 +70,9 @@
                     class="group overflow-hidden rounded-xl border border-neutral-200 bg-white transition hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-600"
                 >
                     <div class="aspect-2/3 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                        @if ($book->cover_url)
+                        @if ($book->resolved_cover_url)
                             <img
-                                src="{{ $book->cover_url }}"
+                                src="{{ $book->resolved_cover_url }}"
                                 alt="Cover of {{ $book->title }}"
                                 loading="lazy"
                                 class="h-full w-full object-cover transition group-hover:scale-105"
@@ -110,9 +110,9 @@
                             <tr class="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
                                 <td class="px-5 py-3">
                                     <div class="h-14 w-10 overflow-hidden rounded bg-neutral-100 dark:bg-neutral-800">
-                                        @if ($book->cover_url)
+                                        @if ($book->resolved_cover_url)
                                             <img
-                                                src="{{ $book->cover_url }}"
+                                                src="{{ $book->resolved_cover_url }}"
                                                 alt="Cover of {{ $book->title }}"
                                                 loading="lazy"
                                                 class="h-full w-full object-cover"

@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Database\Factories\BookFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Model;
+use Database\Factories\BookFactory;
 use Laravel\Scout\Searchable;
 
 #[Fillable([
@@ -101,6 +103,17 @@ class Book extends Model
     public function isLocked(string $field): bool
     {
         return in_array($field, $this->locked_fields ?? [], true);
+    }
+
+    /**
+     * Where the cover actually is, whether it was scraped from a shop or
+     * photographed by a reader and stored on our own disk.
+     */
+    protected function resolvedCoverUrl(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->cover_url ?? ($this->cover_path === null
+            ? null
+            : Storage::disk('public')->url($this->cover_path)));
     }
 
     /**
