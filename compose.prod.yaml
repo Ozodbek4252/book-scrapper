@@ -3,12 +3,14 @@ name: book-scraper-prod
 # Shared definition for every container that runs application PHP code.
 # Values come from the shell or the .env file Compose reads automatically.
 # Built and pushed by .github/workflows/ci-cd.yml, not on the VPS: deploy
-# does `docker compose pull` rather than `--build`. The `build:` section
-# below stays for local testing on a machine that isn't memory-constrained.
+# does `docker compose pull` rather than `--build`. No `build:` key here on
+# purpose — when a service has both `build:` and `image:`, `docker compose
+# pull` treats the tag as a local build target and silently skips checking
+# the registry for something newer, which is exactly what made five days of
+# deploys "succeed" while quietly running a stale image underneath. To build
+# and test this stage locally instead, use plain `docker build --target
+# production -t ghcr.io/ozodbek4252/book-scraper:latest .`
 x-app: &app
-  build:
-    context: .
-    target: production
   image: ghcr.io/ozodbek4252/book-scraper:latest
   restart: unless-stopped
   environment: &app-env
@@ -54,9 +56,7 @@ services:
       RUN_MIGRATIONS: "true"
 
   web:
-    build:
-      context: .
-      target: web
+    # No `build:` here either — see the note above the x-app anchor.
     image: ghcr.io/ozodbek4252/book-scraper-web:latest
     restart: unless-stopped
     volumes:
