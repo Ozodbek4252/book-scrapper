@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\TrustLevel;
 use App\Scraping\Drivers\AsaxiyUzDriver;
 use App\Scraping\Drivers\OlchaUzDriver;
+use App\Scraping\Drivers\QamarUzDriver;
 
 return [
 
@@ -153,6 +154,14 @@ return [
             'driver' => OlchaUzDriver::class,
             'enabled' => env('SCRAPING_OLCHA_ENABLED', false),
             'base_url' => 'https://olcha.uz',
+            'rate_limit' => 1,
+            'trust_level' => TrustLevel::Bookstore,
+        ],
+
+        'qamar_uz' => [
+            'driver' => QamarUzDriver::class,
+            'enabled' => env('SCRAPING_QAMAR_ENABLED', false),
+            'base_url' => 'https://qamar.uz',
             'rate_limit' => 1,
             'trust_level' => TrustLevel::Bookstore,
         ],

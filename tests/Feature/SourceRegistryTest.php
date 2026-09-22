@@ -24,7 +24,7 @@ class SourceRegistryTest extends TestCase
     public function test_only_the_sources_that_were_worth_one_have_a_driver(): void
     {
         $registry = $this->registry();
-        $written = ['asaxiy_uz', 'olcha_uz'];
+        $written = ['asaxiy_uz', 'olcha_uz', 'qamar_uz'];
 
         foreach ($written as $key) {
             $this->assertTrue($registry->hasDriver($key), "[{$key}] should have a driver.");
