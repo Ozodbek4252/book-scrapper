@@ -42,6 +42,7 @@ x-app: &app
     SCRAPING_MAX_PAGES_PER_RUN: ${SCRAPING_MAX_PAGES_PER_RUN:-200}
     SCRAPING_ASAXIY_ENABLED: ${SCRAPING_ASAXIY_ENABLED:-false}
     SCRAPING_OLCHA_ENABLED: ${SCRAPING_OLCHA_ENABLED:-false}
+    SCRAPING_QAMAR_ENABLED: ${SCRAPING_QAMAR_ENABLED:-false}
   volumes:
     - storage:/var/www/html/storage
   depends_on:
