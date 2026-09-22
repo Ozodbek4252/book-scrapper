@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\TrustLevel;
 use App\Scraping\Drivers\AsaxiyUzDriver;
+use App\Scraping\Drivers\HilolNashrDriver;
 use App\Scraping\Drivers\OlchaUzDriver;
 use App\Scraping\Drivers\QamarUzDriver;
 
@@ -162,6 +163,16 @@ return [
             'driver' => QamarUzDriver::class,
             'enabled' => env('SCRAPING_QAMAR_ENABLED', false),
             'base_url' => 'https://qamar.uz',
+            'rate_limit' => 1,
+            'trust_level' => TrustLevel::Bookstore,
+        ],
+
+        // Never has an author: schema.org only puts that field on a
+        // CreativeWork/Book, and this site types every page Product.
+        'hilolnashr_uz' => [
+            'driver' => HilolNashrDriver::class,
+            'enabled' => env('SCRAPING_HILOLNASHR_ENABLED', false),
+            'base_url' => 'https://hilolnashr.uz',
             'rate_limit' => 1,
             'trust_level' => TrustLevel::Bookstore,
         ],
